@@ -148,12 +148,12 @@ End of sprint:
 
 ### 1.6 Initial git setup
 
-- [ ] G.1 Backend repo `eqp4l-backend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
-- [ ] G.2 Frontend repo `p4linventory-frontend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
+- [x] G.1 Backend repo `eqp4l-backend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
+- [x] G.2 Frontend repo `p4linventory-frontend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
 - [x] G.3 Add `.gitignore`, `.env.example`, `README.md`, `SKILLS.md` and a copy of this `TASKS.md` to both repos
 - [x] G.4 Add a pull request template with the quality checklist from rule 0.3 to both repos
 - [ ] G.5 Add CI to both repos that runs the check command on every pull request (done again in B1.8 and F1.2; tick here when the repos are connected)
-- [ ] G.6 Branch protection on `main` and `develop` in both repos: pull request required, CI green required, no force pushes, no direct commits
+- [x] G.6 Branch protection on `main` and `develop` in both repos: pull request required, CI green required, no force pushes, no direct commits
 
 ### 1.7 Git procedure for fixes, patches and updates
 
@@ -695,7 +695,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-2 | Hosting provider, database host, object storage and domain names (O1.1) | DevOps doc | Open | |
 | OQ-3 | Backup and log retention periods | DevOps doc | Open | |
 | OQ-4 | G.5 blocker: the CI workflow (`.github/workflows/ci.yml`, job `check`) runs the pre-commit hooks and a full-history gitleaks scan, but the single check command does not exist yet, so that step is a placeholder. G.5 stays unticked until T.15, B1.8 and O1.3 run `scripts/check.sh` in CI (with a PostgreSQL service and a missing-migration check) | devops, Phase A | Blocked on T.15, B1.8, O1.3 | |
-| OQ-5 | G.1, G.2 and G.6 blocker: branch protection on `main` and `develop` is not applied yet, because requiring the `check` status before CI has run once would block merging the Phase A pull requests. The exact `gh api` commands are in `docs/branch-protection.md`. Apply them after the Phase A pull requests merge and CI has reported `check`. Approving reviews are not required (one GitHub account); reviewer approval is recorded as a PR comment | devops, Phase A | Pending orchestrator | |
+| OQ-5 | G.1, G.2 and G.6 blocker: branch protection on `main` and `develop` is not applied yet, because requiring the `check` status before CI has run once would block merging the Phase A pull requests. The exact `gh api` commands are in `docs/branch-protection.md`. Apply them after the Phase A pull requests merge and CI has reported `check`. Approving reviews are not required (one GitHub account); reviewer approval is recorded as a PR comment | devops, Phase A | Resolved 2026-11-18: protection applied with the commands in `docs/branch-protection.md` after the Phase A pull requests merged and `check` had reported. Verified read-only with `gh api repos/maximusntibrey/<repo>/branches/<branch>/protection` (fields: checks, strict, PR required, approvals, enforce_admins, force pushes, deletions); output for all four branches (`main` and `develop` in both repos): `[["check"],true,true,0,true,false,false]`. G.1, G.2 and G.6 ticked | Orchestrator applied, devops verified, 2026-11-18 |
 | OQ-7 | T.2 substitution: `file-reading`/`pdf-reading` skills do not exist; covered by the `pdf` skill plus the built-in Read tool; T.2 ticked on that basis, pending owner acknowledgement. | devops, Phase A review | Pending owner acknowledgement | |
 
 ## FIX LOG
