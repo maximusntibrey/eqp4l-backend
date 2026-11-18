@@ -188,17 +188,17 @@ Package installs need network access to the package registries (PyPI, npm, GitHu
 
 ### 2.3 Backend (Python, Django, API, database)
 
-- [ ] T.5 Python 3.12+, `venv`, `pip`/`pip-tools` (pinned requirements)
-- [ ] T.6 Django and Django REST Framework (custom user model, session login)
-- [ ] T.7 `drf-spectacular` (generates the OpenAPI contract)
-- [ ] T.8 PostgreSQL (and `psycopg`), plus `django-environ` (env config)
-- [ ] T.9 Password hashing (Argon2 via `argon2-cffi`), `django-ratelimit` or DRF throttling
-- [ ] T.10 `django-cors-headers`, `django-filter`, `Pillow` (image validation and optimisation)
-- [ ] T.11 `pytest`, `pytest-django`, `factory-boy`, `pytest-cov` (permissions, isolation, concurrency tests)
-- [ ] T.12 `ruff` (lint and format), `mypy` or `django-stubs`, `bandit` and `pip-audit` (security checks)
-- [ ] T.13 Gunicorn and WhiteNoise (or the chosen host's equivalent), Sentry SDK (error monitoring)
+- [x] T.5 Python 3.12+, `venv`, `pip`/`pip-tools` (pinned requirements)
+- [x] T.6 Django and Django REST Framework (custom user model, session login)
+- [x] T.7 `drf-spectacular` (generates the OpenAPI contract)
+- [x] T.8 PostgreSQL (and `psycopg`), plus `django-environ` (env config)
+- [x] T.9 Password hashing (Argon2 via `argon2-cffi`), `django-ratelimit` or DRF throttling
+- [x] T.10 `django-cors-headers`, `django-filter`, `Pillow` (image validation and optimisation)
+- [x] T.11 `pytest`, `pytest-django`, `factory-boy`, `pytest-cov` (permissions, isolation, concurrency tests)
+- [x] T.12 `ruff` (lint and format), `mypy` or `django-stubs`, `bandit` and `pip-audit` (security checks)
+- [x] T.13 Gunicorn and WhiteNoise (or the chosen host's equivalent), Sentry SDK (error monitoring)
 - [ ] T.14 Backup tooling: `pg_dump` and a scripted restore test
-- [ ] T.15 One check command (e.g. `make check`) that runs lint, type check, security scan and tests
+- [x] T.15 One check command (e.g. `make check`) that runs lint, type check, security scan and tests
 
 ### 2.4 Frontend (React, mobile-first UI)
 
@@ -326,7 +326,7 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 
 - [ ] O1.1 Owner chooses the hosting provider, database host, object storage and domain names (record in `RUNBOOK.md` and remove from Open questions)
 - [ ] O1.2 Local environment: Dockerfile and Docker Compose for the backend and PostgreSQL; `.env.example` for both repos
-- [ ] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service
+- [x] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service
 - [ ] O1.4 Frontend CI pipeline (3.3)
 - [ ] O1.5 Staging environment created for backend and frontend, secrets stored in the host's secret store
 - [ ] O1.6 Automatic deploy of `develop` to staging, followed by the smoke tests (3.4)
@@ -694,9 +694,13 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-1 | Development gate (rule 0.7): has the owner authorised development? | Doc sync 2026-11-18 | Yes, from Sprint 1 | Owner, 2026-11-18 |
 | OQ-2 | Hosting provider, database host, object storage and domain names (O1.1) | DevOps doc | Open | |
 | OQ-3 | Backup and log retention periods | DevOps doc | Open | |
-| OQ-4 | G.5 blocker: the CI workflow (`.github/workflows/ci.yml`, job `check`) runs the pre-commit hooks and a full-history gitleaks scan, but the single check command does not exist yet, so that step is a placeholder. G.5 stays unticked until T.15, B1.8 and O1.3 run `scripts/check.sh` in CI (with a PostgreSQL service and a missing-migration check) | devops, Phase A | Blocked on T.15, B1.8, O1.3 | |
+| OQ-4 | G.5 blocker: the CI workflow (`.github/workflows/ci.yml`, job `check`) runs the pre-commit hooks and a full-history gitleaks scan, but the single check command does not exist yet, so that step is a placeholder. G.5 stays unticked until T.15, B1.8 and O1.3 run `scripts/check.sh` in CI (with a PostgreSQL service and a missing-migration check) | devops, Phase A | Backend resolved 2026-11-18 (PR #2, branch `feature/B1.0-tooling`): CI job `check` now installs the hash-pinned requirements and runs `bash scripts/check.sh` (ruff, ruff format, mypy, bandit, pip-audit, Django check, missing-migration check, pytest with coverage) against a PostgreSQL 18.7 service; run 44358048889 passed. T.15 and O1.3 ticked. G.5 stays unticked until the frontend's `npm run check` replaces its placeholder (T.24 / F1.2 / O1.4) | devops, 2026-11-18 (backend only) |
 | OQ-5 | G.1, G.2 and G.6 blocker: branch protection on `main` and `develop` is not applied yet, because requiring the `check` status before CI has run once would block merging the Phase A pull requests. The exact `gh api` commands are in `docs/branch-protection.md`. Apply them after the Phase A pull requests merge and CI has reported `check`. Approving reviews are not required (one GitHub account); reviewer approval is recorded as a PR comment | devops, Phase A | Resolved 2026-11-18: protection applied with the commands in `docs/branch-protection.md` after the Phase A pull requests merged and `check` had reported. Verified read-only with `gh api repos/maximusntibrey/<repo>/branches/<branch>/protection` (fields: checks, strict, PR required, approvals, enforce_admins, force pushes, deletions); output for all four branches (`main` and `develop` in both repos): `[["check"],true,true,0,true,false,false]`. G.1, G.2 and G.6 ticked | Orchestrator applied, devops verified, 2026-11-18 |
 | OQ-7 | T.2 substitution: `file-reading`/`pdf-reading` skills do not exist; covered by the `pdf` skill plus the built-in Read tool; T.2 ticked on that basis, pending owner acknowledgement. | devops, Phase A review | Pending owner acknowledgement | |
+| OQ-8 | T.14 and B1.0 blocker: `pg_dump`/`pg_restore` 18.7 are available through the pinned PostgreSQL image (no local install) and a manual dump-and-restore round trip matched (SKILLS.md Appendix A), but the scripted restore test is not written yet: it belongs with the backup and restore scripts (devops O-step). T.14, and therefore B1.0 (all of 2.2 and 2.3), stay unticked until that script exists and passes. Note: T.6 is ticked for the tooling (Django 5.2, DRF, session authentication configured); the custom user model itself is built in B2.2 after the B1.2 ERD is approved | devops, B1.0 | Open: scripted restore test pending | |
+| OQ-9 | Type checking of DRF code: `djangorestframework-stubs` (typeddjango, MIT, 3.18.2, needs `django-stubs>=6.1.2`, already pinned) is not in TASKS 2.3, so it was not installed and `rest_framework` imports are typed as `Any` in mypy. Add it as a vetted dev dependency before API code starts (B2.x)? | devops, B1.0 | Open: owner or orchestrator decision | |
+| OQ-10 | Minimum test coverage: no threshold is stated in the requirements, so `pytest --cov` reports coverage but does not fail below a level. Should the check command enforce a minimum (for example 90% once app code exists)? | devops, B1.0 | Open: owner decision | |
+| OQ-11 | Database driver licence and version: `psycopg` 3 is LGPL-3.0-only (used unmodified as a library, normally acceptable; please confirm). Local and CI use PostgreSQL 18.7; the managed host chosen in O1.1 (OQ-2) must offer major version 18, or CI and local are moved to the host's version | devops, B1.0 | Open: owner confirmation | |
 
 ## FIX LOG
 
