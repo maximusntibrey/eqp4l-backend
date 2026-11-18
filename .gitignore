@@ -37,6 +37,9 @@ htmlcov/
 *.sql.gz
 *.backup
 
+# Node tooling (pre-commit or docs tooling must never commit dependencies)
+node_modules/
+
 # Logs
 *.log
 
