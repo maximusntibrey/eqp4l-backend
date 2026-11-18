@@ -1,0 +1,80 @@
+# Tool configuration for eqp4l-backend (TASKS T.11, T.12, T.15).
+# Dependencies are NOT declared here: they are pinned with hashes in requirements/*.txt
+# (pip-tools, T.5). Run every check with:  bash scripts/check.sh
+
+[project]
+name = "eqp4l-backend"
+version = "0.0.0"
+description = "Payless4Laptops Inventory & Warehouse System: Django REST API"
+requires-python = ">=3.13,<3.14"
+
+# --- ruff: lint and format (T.12). Same version as the pre-commit hook (0.17.5). ---------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",        # pyflakes
+  "I",        # import order
+  "B",        # bugbear
+  "UP",       # pyupgrade
+  "DJ",       # Django
+  "S",        # bandit rules (bandit itself also runs in the check command)
+  "C4",       # comprehensions
+  "SIM",      # simplify
+  "PT",       # pytest style
+  "RUF",      # ruff-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"**/tests/**" = ["S101"]
+"**/test_*.py" = ["S101"]
+
+# --- mypy with the Django plugin (T.12) ----------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+exclude = ["^\\.venv/", "^staticfiles/"]
+# drf-spectacular ships py.typed but leaves some public functions unannotated.
+untyped_calls_exclude = ["drf_spectacular"]
+
+[tool.django-stubs]
+django_settings_module = "eqp4l.settings"
+
+# These ship no type information: Django REST Framework (its stub package is not in the
+# vetted list, TASKS 2.3, see TASKS Open questions) and django-environ (no stubs exist).
+# Their imports are typed as Any.
+[[tool.mypy.overrides]]
+module = ["rest_framework", "rest_framework.*", "environ", "environ.*"]
+ignore_missing_imports = true
+
+# --- bandit security scan (T.12) -----------------------------------------------------
+[tool.bandit]
+exclude_dirs = [".venv", "staticfiles"]
+
+[tool.bandit.assert_used]
+skips = ["*/tests/*", "*/test_*.py"]
+
+# --- pytest and coverage (T.11) ------------------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "eqp4l.settings"
+# --no-migrations: until the B1.2 ERD is approved there are no project migrations, and the
+# test database is built from the models directly instead of running Django's migrations.
+addopts = "-ra --strict-markers --strict-config --no-migrations"
+python_files = ["test_*.py"]
+norecursedirs = [".venv", ".git", "staticfiles", "node_modules"]
+xfail_strict = true
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = [".venv/*", "tests/*", "*/tests/*", "manage.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
