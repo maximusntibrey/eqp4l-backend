@@ -1,0 +1,19 @@
+# Development and CI dependencies (TASKS 2.3, T.11 and T.12).
+# Constrained by the production pins so shared packages never drift.
+# Regenerate with:
+#   pip-compile --generate-hashes --allow-unsafe --strip-extras requirements/dev.in
+-c base.txt
+
+# T.11 Tests
+pytest==9.2.0
+pytest-django==4.14.0
+factory-boy==3.3.3
+pytest-cov==7.1.0
+# T.12 Lint and format (same version as the ruff pre-commit hook, v0.17.5)
+ruff==0.17.5
+# T.12 Type check (mypy with the Django plugin)
+mypy==2.4.1
+django-stubs==6.1.2
+# T.12 Security checks
+bandit==1.9.4
+pip-audit==2.10.1
