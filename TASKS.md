@@ -694,6 +694,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-1 | Development gate (rule 0.7): has the owner authorised development? | Doc sync 2026-11-18 | Yes, from Sprint 1 | Owner, 2026-11-18 |
 | OQ-2 | Hosting provider, database host, object storage and domain names (O1.1) | DevOps doc | Open | |
 | OQ-3 | Backup and log retention periods | DevOps doc | Open | |
+| OQ-4 | G.5 blocker: the CI workflow (`.github/workflows/ci.yml`, job `check`) runs the pre-commit hooks and a full-history gitleaks scan, but the single check command does not exist yet, so that step is a placeholder. G.5 stays unticked until T.15, B1.8 and O1.3 run `scripts/check.sh` in CI (with a PostgreSQL service and a missing-migration check) | devops, Phase A | Blocked on T.15, B1.8, O1.3 | |
+| OQ-5 | G.1, G.2 and G.6 blocker: branch protection on `main` and `develop` is not applied yet, because requiring the `check` status before CI has run once would block merging the Phase A pull requests. The exact `gh api` commands are in `docs/branch-protection.md`. Apply them after the Phase A pull requests merge and CI has reported `check`. Approving reviews are not required (one GitHub account); reviewer approval is recorded as a PR comment | devops, Phase A | Pending orchestrator | |
 
 ## FIX LOG
 
