@@ -2,7 +2,7 @@
 
 **Status: DRAFT for owner approval (gate).** No model or migration is written until the owner approves this document (SKILLS Database Standards; TASKS B1.2). After approval, B2.1 builds exactly this; later changes are new migrations that cite a change to this document.
 
-Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (s11.2 binding for stock movements per GAP-C07), **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 (`TASKS.md` / `.claude/STATE.md`). Companion: `docs/PERMISSIONS.md` (B1.1). Open points are **OPEN En** in section 11 (and **Pn** in the permission document).
+Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (s11.2 binding for stock movements per GAP-C07), **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 (`TASKS.md` / `.claude/STATE.md`). Companion: `docs/PERMISSIONS.md` (B1.1). Decisions are in section 11; only the **OPEN-OWNER** items remain open (and **Pn** in the permission document).
 
 ## 1. Decisions this model implements
 
@@ -23,7 +23,7 @@ Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **O
 - Tables are named `<app>_<model>` (Django default). Apps follow the README layout. Apps with no tables in Sprints 1-2: `branch_access` (Sprint 5), `approvals` (Sprint 4), `notifications` (Sprint 4), `reports` (read-only queries only).
 - Internal primary keys: `bigint` identity. Public references are separate unique columns (section 3, E2). Framework tables (sessions, migrations, content types) are not modelled here. `django.contrib.auth` Group and Permission tables exist but are unused: the project uses its own roles and grants.
 - Audit fields on editable records: `created_at`, `created_by`, `updated_at`, `updated_by` (BE s3.2; SKILLS). Abbreviated "audit fields" below.
-- Quantities: `integer`, whole numbers (E12). Money: `numeric(12,2)`, CHECK `>= 0` where negative is not valid.
+- Quantities: `integer` in this draft (E12 OPEN-OWNER: if the owner chooses numeric(12,3), every quantity column becomes `numeric(12,3)` with the same CHECKs; recommended by the team, BE s3.12:218, SKILLS:98). Money: `numeric(12,2)`, CHECK `>= 0` where negative is not valid.
 - Nothing with history is deleted: foreign keys are `ON DELETE PROTECT` (no cascades); there is no delete path for users, branches, items, documents, ledger or audit rows.
 - Active branch and role used in a request live in the session, validated on every request, and are copied onto the audit event and ledger rows.
 
@@ -110,7 +110,7 @@ In Sprints 1-2 an **item is one SKU** (the sellable configuration). The product/
 | mpn | varchar(100) NN | Manufacturer part number. |
 | description | text | |
 | condition | varchar(12) NN | CK in (`new`, `refurbished`, `used`). |
-| uom | varchar(20) NN default `piece` | Quantities are whole numbers in Sprints 1-2 (E12). |
+| uom | varchar(20) NN default `piece` | Whole numbers in this draft (E12 OPEN-OWNER). |
 | specs | jsonb NN default `{}` | The "key specs" of B4.1, validated against field definitions per category kept in code and served by the API (B4.1). Typed spec columns with filters are Sprint 3 (B12.1). |
 | image_path / image_content_type / image_bytes | varchar / varchar / integer null | One image (B4.2); type and size enforced in the service; at least one image is required to activate. Several images: Sprint 3 table. |
 | show_on_website | boolean NN default false | Used by the Sprint 9 API. |
@@ -118,7 +118,7 @@ In Sprints 1-2 an **item is one SKU** (the sellable configuration). The product/
 | status | varchar(12) NN default `draft` | CK in (`draft`, `active`, `discontinued`). Only `active` can be received, dispatched or sold; `discontinued` stops new transactions, keeps history. |
 | audit fields | | |
 
-No `price` and no `cost` columns on the item (OQ-19; cost lives on receipt lines, E7). Currency is the constant GHS, not a column. Tax category, warranty terms and supplier link are later sprints and are not added now.
+No `price` and no `cost` columns on the item (OQ-19; cost lives on receipt lines; the cost shown is the derived average, E7). Currency is the constant GHS, not a column. Tax category, warranty terms and supplier link are later sprints and are not added now.
 
 Indexes: UQ `sku`; `(status)`; `(category, brand)`; trigram or `lower()` index on `name`, `model_name` and `sku` for search (B6.3, B9.1: results within about 2 seconds); UQ-style duplicate warning is a service query, not a constraint (BE s3.9).
 
@@ -139,7 +139,7 @@ Indexes: UQ `sku`; `(status)`; `(category, brand)`; trigram or `lower()` index o
 - UQ `(item, location)`.
 - **available = on_hand - reserved**, computed in queries and in the stock service; never stored. Sale and dispatch require `available >= q`.
 - **In transit is not here** (derived, section 4).
-- Rows are created on first need by the service (`INSERT ... ON CONFLICT DO NOTHING`, then lock).
+- Rows are created on first need by the service (ORM `bulk_create(ignore_conflicts=True)`, then lock; no raw SQL, SKILLS:77).
 - Invariant (test and management check): for every `(item, location, bucket)`, the balance equals the sum of ledger `delta`.
 - Indexes: UQ `(item, location)`; `(location)`; partial `(location) WHERE reorder_level IS NOT NULL AND on_hand - reserved <= reorder_level` for low stock.
 
@@ -175,7 +175,7 @@ Receipts are never edited afterwards (no update path; corrections are Sprint 4 r
 | kind | varchar(20) NN default `warehouse_dispatch` | CK in (`warehouse_dispatch`) now. Sprint 4 adds `branch_transfer` by a new migration widening the CK; the table, lines and discrepancy flow are reused (no rewrite). |
 | origin | FK `branches_branch` NN | Sprints 1-2: the warehouse. |
 | destination | FK `branches_branch` NN | A branch. CK `origin <> destination`. |
-| status | varchar(24) NN | CK in (`in_transit`, `completed`, `rejected`, `partially_received`, `under_investigation`, `resolved`), from SPEC s5.4 / GAP-H05. Header status is set by the service from the line statuses; `draft` is not used (dispatch is confirmed in one step: E11). |
+| status | varchar(24) NN | CK in (`in_transit`, `partially_received`, `completed`, `rejected`, `under_investigation`): the SPEC s5.4 / GAP-H05 words in use (`draft` and `dispatched` are not used, E11). Derived from the line statuses by one pure function (E21), recomputed under the header lock after every change to a line. |
 | reason | varchar(200) null | For Sprint 4 branch transfers; null for warehouse dispatches. |
 | dispatched_by | FK user NN | |
 | dispatched_at | timestamptz NN | |
@@ -278,11 +278,13 @@ A completed sale is never edited; only the cancel transition is allowed, through
 | operation_type | varchar(24) NN | CK in (`supplier_receipt`, `dispatch`, `receive_decision`, `discrepancy_resolution`, `sale`, `sale_cancel`, `opening_balance_import`). |
 | actor | FK user NN | |
 | request_hash | char(64) NN | SHA-256 of the canonical request body. |
-| source_type / source_id | varchar(30) / bigint NN | The document the operation created or changed. For an import, the operation itself (`source_type = 'import_batch'`, `source_id = id`). |
-| metadata | jsonb NN default `{}` | For imports: file name, row count, file hash. |
+| (no source columns) | | The operation is inserted before its document exists, and the table is append-only, so it carries no pointer to the document. The link is the other way round: each document holds a UQ FK to its operation (`goods_receipt.operation`, `dispatch.operation`, `dispatch.receive_operation`, `discrepancyresolution.operation`, `sale.operation`, `sale.cancel_operation`). Ledger rows carry `source_type`, `source_id`, `source_ref`, `source_line_id`. |
+| metadata | jsonb NN default `{}` | Set at insert only. For an import: file name, row count, file hash, and the result summary, all computed by the dry-run validation before the operation row is inserted. |
 | created_at | timestamptz NN | |
 
 UQ `(actor, operation_type, idempotency_key)`. A repeat with the same key and the same `request_hash` returns the original result; the same key with a different hash is an error naming the field (409). Keys are kept forever (E13).
+
+**Replay rebuilds the response; it does not store it.** The operation row and its document are inserted in one transaction, so a committed operation always has its document. On replay the service finds the document through the FK by `operation_type` (table above) and returns it through the normal read serializer for the caller (same actor, so the same cost rule). Import replays return the stored summary from `metadata` plus the ledger rows of that operation. No response body is stored, so nothing sensitive is duplicated.
 
 **`stock_ledger_entry`** (append-only: one row per bucket change)
 
@@ -330,6 +332,7 @@ Indexes: `(item, location, occurred_at)`; `(location, occurred_at)`; `(source_ty
 | ip_address | inet null | |
 | user_agent | varchar(300) | Device. |
 | request_id | uuid null | Correlates with logs. |
+| operation | FK `stock_ledger_operation` null | Set for events written by a stock service call (receipt, dispatch, receiving, resolution, sale, cancel, import); null otherwise. Lets an audit line be joined to its ledger rows. |
 
 Indexes: `(occurred_at DESC)`; `(actor, occurred_at)`; `(branch, occurred_at)`; `(action, occurred_at)`; `(reference_type, reference_id)`. The login log and rate limit (B2.3) use `auth.login` and `auth.login_failed` events: no separate table and no cache dependency (thresholds: P18). Retention is open (GAP-M10).
 
@@ -368,7 +371,8 @@ How it extends **without a rewrite**:
 - **Price history (Sprint 5, B23.1):** the service stops updating in place: it sets `effective_to` on the current row and inserts the new row. The unique index already allows many closed rows and one open row. "Old price, new price, who, when" are the consecutive rows (`set_by`, `effective_from`); changes made in Sprints 1-2 can be backfilled from the audit events.
 - **Named price lists (Sprint 6, B26.1):** add a nullable `price_list` FK and widen the CK; `central` is the default list.
 - Sale lines copy the amount at sale time, so later changes never alter a past sale.
-- A below-cost warning (Sprint 5) compares against cost, which lives on receipt lines (E7).
+- A selling price is required (BE s3.2:55), so an item needs a price row to be activated or sold (E16 answered).
+- A below-cost warning (Sprint 5) compares against average cost, derived from receipt lines and the ledger (E7).
 
 ## 6. Movement table (SPEC s11.2, OQ-18)
 
@@ -414,17 +418,20 @@ Other DB guards in the same style: `accounts_user.login_id` immutable (trigger);
 Each public function: `transaction.atomic`; docstring naming the rule it enforces and the audit event it writes; steps as follows.
 
 **Locking order** (global, to prevent deadlocks):
-1. Insert the `stock_ledger_operation` row (unique key `(actor, operation_type, idempotency_key)`); on conflict return the stored result (same hash) or fail (different hash). No row locks yet.
-2. Lock the **source document**, if it already exists: `select_for_update` on the `transfers_dispatch` row (receiving decision), the discrepancy's line and `transfers_discrepancy` rows (resolution) or the `sales_sale` row (cancel), then its lines ordered by `id` ascending. A call locks at most one document type.
-3. Ensure the needed `inventory_stockbalance` rows exist (`INSERT ... ON CONFLICT DO NOTHING`), then lock them with `select_for_update` **ordered by `(location_id, item_id)` ascending**, all in one query. One balance row holds the three buckets, so one lock covers any bucket of that item and location.
-4. Re-check the rules against the locked values (available, reserved, status, quantities).
-5. Insert ledger rows, update balances, update line and header status, insert the audit event; commit.
+1. Insert the `stock_ledger_operation` row (unique key `(actor, operation_type, idempotency_key)`); on conflict return the rebuilt result (same hash) or fail (different hash). No row locks yet.
+2. Lock the **document header first**. For every dispatch-related operation (create a dispatch: the new header row is inserted, then locked; receiving decision; discrepancy resolution) that is the `transfers_dispatch` row. For a resolution the dispatch id is read from the line without a lock, then the header is locked, then the line is re-read. For a sale cancel: the `sales_sale` row. A call touches one document type.
+3. Lock the document's **lines ordered by `id` ascending**, then any `transfers_discrepancy` rows of those lines ordered by `id`.
+4. Ensure the needed `inventory_stockbalance` rows exist (ORM `bulk_create(ignore_conflicts=True)`), then lock them with `select_for_update` **ordered by `(location_id, item_id)` ascending**, all in one query. One balance row holds the three buckets, so one lock covers any bucket of that item and location.
+5. Re-check the rules against the locked values (available, reserved, status, quantities).
+6. Insert ledger rows, update balances, update line statuses, **recompute the header status from all of its lines** (still under the header lock, so two concurrent resolutions of different lines of one dispatch serialise at step 2 and the header always reflects both), insert the audit event; commit.
 
-Locks never go from balances back to documents; documents are always before balances; balances are always in `(location_id, item_id)` order. A sale of the last unit by two clients: the second blocks at step 3, then fails the check at step 4 with a plain "only N available" message. Tested with concurrent transactions (B4.5, B6.6).
+Cross-checking sales: a sale with no pre-existing document locks nothing at steps 2-3 and goes straight to step 4.
+
+Locks never go from balances back to documents; headers come before lines, lines before balances; balances are always in `(location_id, item_id)` order. A sale of the last unit by two clients: the second blocks at step 4, then fails the check at step 5 with a plain "only N available" message. Tested with concurrent transactions (B4.5, B6.6).
 
 **Idempotency keys**
 - Every mutating stock endpoint requires an `Idempotency-Key` header (UUID): warehouse receipt, dispatch, receiving decision, discrepancy resolution, sale, cancel sale, CSV import commit.
-- Scope `(actor, operation_type, key)`, kept forever (E13). Same key and body: the original result is returned (same status and body, no new rows). Same key, different body: 409 with a plain message.
+- Scope `(actor, operation_type, key)`, kept forever (E13). Same key and body: the original result is rebuilt from the operation and its document (section 3.8; no new rows). Same key, different body: 409 with a plain message.
 - Natural uniqueness backs it up: one receiving decision per dispatch (`receive_operation` UQ and status check under the lock); one cancel per sale (`cancel_operation` UQ); one reversal per ledger entry (`reverses` UQ); ledger UQ `(operation, source_line_id, location, item, bucket, reason)`.
 - System operations derive their key: CSV import commit uses the file hash plus the actor; rows use the row number as `source_line_id`.
 
@@ -470,6 +477,7 @@ erDiagram
     inventory_item ||--o{ sales_saleline : sold
     stock_ledger_operation ||--o| sales_sale : creates
     accounts_user ||--o{ audit_auditevent : performs
+    stock_ledger_operation |o--o{ audit_auditevent : "audited by"
     branches_branch |o--o{ audit_auditevent : context
 
     accounts_user {
@@ -598,28 +606,47 @@ erDiagram
     }
 ```
 
-## 11. OPEN questions (owner)
+## 11. Decisions and open questions
 
-| Ref | Question | Proposed default |
+Citations were checked against the inventory files (`file:line`).
+
+### 11.1 Answered by the documents
+
+| Ref | Answer | Source |
 |---|---|---|
-| E1 | Is the central warehouse a row of `branches_branch` with `kind = 'warehouse'` (one table for every location), or a separate locations table? SPEC s12 mentions a "warehouse location" in the `warehouse` app. | One table, `kind` column, exactly one warehouse. |
-| E2 | Internal key type and public reference formats (SKILLS: open). | `bigint` identity keys. References `GRN-000012`, `DSP-000004`, `SAL-000230`, `IMP-000003`, branch `BR-001`, all generated from the key so they are unique and never reused; SKU format `SKU-000123` unless imported. |
-| E3 | May a branch report **more** than was dispatched (overage)? | No: `received <= dispatched`. Surplus waits for the Sprint 4 positive adjustment. |
-| E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Yes: several resolutions per discrepancy; line `resolved_mixed` when outcomes differ. |
-| E5 | Does the dashboard "in transit" figure include quantity Under investigation (OQ-18 formula says yes) or show it as a separate number? | One total plus a separate "under investigation" figure. |
-| E6 | Cancelling a sale always returns the quantity to the branch's `on_hand` (sellable)? Damaged returns are Sprint 4. | Yes. |
-| E7 | Costing: BE s3.7 leaves the method unconfirmed ("average cost... any other method needs to be confirmed"). Which cost do SA and WA see on an item and stock in Sprints 1-2? Margin (Sprint 8) can be recomputed from receipt lines and the ledger, so nothing more is stored now. | The latest receipt line's unit cost. |
-| E8 | If a user is later promoted to Super Admin (or demoted), the login ID keeps its original prefix (IDs never change). Confirm. | Yes, the prefix reflects the first role only. |
-| E9 | Add a database guard so balance rows can only be written inside the stock service (a trigger requiring a transaction-local setting that only the service sets), on top of the architecture test? | Yes. |
-| E10 | Required identity and employment fields on a user beyond name (phone, email, employment details, SPEC s2.1). | `full_name` required; `phone` and `email` optional. |
-| E11 | Is a Draft dispatch needed (SPEC s5.4 lists "draft"), or is a dispatch confirmed in one step as in FE 4.7? | One step; no draft. |
-| E12 | Are all quantities whole numbers in Sprints 1-2 (no decimal units of measure)? | Yes; `uom` stored, default `piece`. |
-| E13 | Idempotency key scope and retention. | Per actor and operation type, kept forever. |
-| E14 | Store timestamps in UTC, show Africa/Accra (SKILLS: "proposed"). | Yes. |
-| E15 | Separate migration/owner database role and a runtime role without UPDATE/DELETE on the append-only tables. Depends on the host (OQ-20 on hold). Until then triggers (layer 3) are the database guard. | Adopt when hosting is chosen. |
-| E16 | Item must have a price to be activated or sold? (Same as P5.) | Activation requires a price. |
-| E17 | SKU generation rule for items created through the API (format, per category prefix?). | System-generated `SKU-` plus key; imported SKUs accepted if unique. |
-| E18 | Is the unit cost mandatory on every receipt line? SPEC s4.2 says "where applicable"; FE 4.6 asks for it. | Mandatory. |
-| E19 | Receiver-side damage: the OQ-18 rule credits `quarantined` at the **destination**, including for goods that never arrived (short). Confirm it applies to short as well as rejected quantities. | Yes, as written in OQ-18. |
-| E20 | How are brands and sub-types maintained in Sprints 1-2 (seed only, or an endpoint and a role)? B4.1 lists no endpoint. | Seed only, changed by a data migration; an endpoint for SA and WA can be added with approval. |
-| E21 | How is the dispatch header `status` derived from its lines (SPEC s5.4 lists the words, not the rules)? | `in_transit` until decided; then `completed` if every line is `received`; `rejected` if nothing was accepted on any line; `partially_received` if something was accepted and a discrepancy is open; `under_investigation` is a line status only; `resolved` when every discrepancy is resolved. |
+| E5 | The dashboard in-transit total includes quantity Under investigation (derived: dispatched - accepted - resolved). | OQ-18 |
+| E6 | Cancelling a sale posts a compensating reversal back to the branch `on_hand`. | BE s6:257, s7:264 |
+| E7 | Cost is the **average cost**, derived from receipt lines and the ledger; it is not a stored item column and not "latest receipt cost". SA and WA only. | BE s3.7:188; SKILLS:144 |
+| E8 | The login ID never changes, whatever the role later. | BE s2:19 |
+| E11 | A dispatch is confirmed in one step; no Draft. | FE 4.7:74; BE s5:238-239 |
+| E16 | A selling price is required, so activation needs one (same as P5). | BE s3.2:55; OVR s1 #7; FE 4.3:56 |
+| E18 | Unit cost is mandatory on every receipt line. | FE 4.6:70; BE s12:316 |
+| E19 | Damage credits `quarantined` at the destination as OQ-18 says, for rejected and short quantity alike. | OQ-18 |
+
+### 11.2 Technical decisions (team)
+
+| Ref | Decision |
+|---|---|
+| E1 | One location table (`branches_branch`) with a `kind` column; exactly one warehouse. |
+| E2 | `bigint` identity keys; public references generated from the key (`GRN-000012`, `DSP-000004`, `SAL-000230`, `IMP-000003`, branch `BR-001`). |
+| E9 | Database guard: balance rows can be written only inside the stock service (a trigger requires a transaction-local setting that only the service sets), on top of the architecture test. |
+| E13 | Idempotency key scope is actor plus operation type; kept forever. |
+| E14 | Timestamps stored in UTC, shown Africa/Accra. |
+| E17 | New SKUs are `SKU-` plus the key; imported SKUs are accepted if unique. |
+| E20 | Brands and sub-types are seeded by data migration now; a management endpoint comes later with approval. |
+| E21 | Dispatch header status is derived from the lines by one pure function using only the SPEC s5.4 words: `in_transit` until the decision; then `completed` when every line is `received` or fully resolved; with an open discrepancy: `rejected` if the receiver rejected everything, `partially_received` if something was accepted, `under_investigation` if nothing arrived at all. Recomputed under the header lock (section 8). |
+
+### 11.3 Later
+
+| Ref | Item |
+|---|---|
+| E15 | Separate owner and runtime database roles and REVOKE of UPDATE/DELETE: when hosting is chosen (O1.5; hosting is on hold, OQ-20). Triggers (section 7, layer 3) are the guard until then. |
+
+### 11.4 OPEN-OWNER
+
+| Ref | Question | Recommendation |
+|---|---|---|
+| E3 | May a branch report **more** than was dispatched (overage)? | No: `received <= dispatched`; surplus goes through the Sprint 4 found-stock adjustment. |
+| E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Yes: several resolutions per discrepancy; line `resolved_mixed` when the outcomes differ. |
+| E10 | Required identity and employment fields on a user beyond name (SPEC s2.1). | `full_name` required; `phone` and `email` optional. |
+| E12 | Quantities: piece-only integers, or `numeric(12,3)` (BE s3.12:218 and SKILLS:98 allow decimals where the unit of measure does; integer-only is a narrowing). | `numeric(12,3)` unless the owner confirms piece-only. |
