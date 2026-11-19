@@ -100,6 +100,26 @@ PASSWORD_HASHERS = [
 # Vite dev origins to the CSRF trusted list. Staging and production never set it.
 LOCAL_DEV: bool = DEBUG or env.bool("DJANGO_LOCAL", default=False)
 
+# Local mode may only serve loopback hosts, so it cannot be left on by mistake behind a
+# real domain.
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1", "[::1]"}
+if LOCAL_DEV and not set(ALLOWED_HOSTS) <= _LOOPBACK_HOSTS:
+    raise ImproperlyConfigured(
+        "DJANGO_LOCAL/DJANGO_DEBUG is only allowed when every DJANGO_ALLOWED_HOSTS entry is "
+        "localhost, 127.0.0.1 or ::1."
+    )
+
+# Outside local mode, placeholder and known-default keys (the Compose default and the
+# .env.example value, both public in git) are refused.
+_KNOWN_DEFAULT_KEYS = {
+    "local-only-insecure-key-do-not-use-elsewhere",
+    "change-me-local-only-placeholder",
+}
+if not LOCAL_DEV and (SECRET_KEY in _KNOWN_DEFAULT_KEYS or SECRET_KEY.startswith("change-me")):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is a placeholder or a published default; set a real secret."
+    )
+
 # Secure by default (staging and production are HTTPS only, DevOps s3). Outside local
 # mode a false value is refused at start-up instead of being honoured silently.
 SESSION_COOKIE_SECURE: bool = env.bool("SESSION_COOKIE_SECURE", default=True)

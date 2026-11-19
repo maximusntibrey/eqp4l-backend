@@ -77,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File scripts\dev.ps1
 `scripts\dev.ps1` checks that Docker is running, creates `.env` from `.env.example` if it is missing, runs `docker compose up -d --build`, waits for `/health/` and prints the URLs. The manual equivalent is `copy .env.example .env` then `docker compose up -d --build` (the `.env` is optional: Compose has safe local defaults). On start the app container waits for the database, applies migrations (`migrate --noinput`) and, only if `DJANGO_SEED_DEV=1` and a `seed_dev` command exists, seeds dev data.
 
 - Health: http://127.0.0.1:8000/health/ (200 `ok` when the app and database are up). Use `127.0.0.1`, not `localhost`, on Windows.
-- API schema and docs: not served yet. The contract (B1.3) and the `/api/v1/` endpoints come later; for now `/health/` is the only route.
+- API schema and docs: not served by the app. The contract is the file `openapi/openapi.yaml` (v0.2.0, B1.3); the `/api/v1/` endpoints are built from B2 on, so for now `/health/` is the only live route.
 - PostgreSQL for tools: `127.0.0.1:5433` (user, password and database from `.env`).
 - Dev logins: they arrive with B2.5 (`seed_dev`), together with the user model (B2.2) and login (B2.3). Their passwords will come from `DEV_SEED_PASSWORD_*` in your own git-ignored `.env`. There is no login to try before then.
 - Frontend: run the Vite dev server on http://localhost:5173 with a proxy so the browser sees one origin (no CORS needed): `server: { proxy: { '/api': 'http://127.0.0.1:8000', '/health': 'http://127.0.0.1:8000' } }`. Django already trusts `http://localhost:5173` and `http://127.0.0.1:5173` for CSRF and allows non-HTTPS cookies in local mode (`DJANGO_LOCAL=true`); production refuses insecure cookies.

@@ -3,7 +3,9 @@
 # files if the build did not, optionally seeds local dev data, then runs the command.
 # POSIX sh on purpose (python:slim has no bash guarantee). Must stay LF (.gitattributes).
 #
-#   DJANGO_MIGRATE_ON_START  1 (default) runs `migrate --noinput`; set 0 to skip.
+#   DJANGO_MIGRATE_ON_START  1 runs `migrate --noinput`; default 0. Only compose.yaml (local)
+#                            sets 1. Staging/production migrations stay a deploy step run
+#                            after a verified backup (DevOps s4, s7), never on container start.
 #   DJANGO_SEED_DEV          1 runs `manage.py seed_dev` IF that command exists.
 #   DB_WAIT_SECONDS          how long to wait for the database (default 60).
 set -eu
@@ -27,7 +29,7 @@ while True:
         time.sleep(2)
 PY
 
-  if [ "${DJANGO_MIGRATE_ON_START:-1}" = "1" ]; then
+  if [ "${DJANGO_MIGRATE_ON_START:-0}" = "1" ]; then
     python manage.py migrate --noinput
   fi
 

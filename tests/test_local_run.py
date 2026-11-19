@@ -48,9 +48,54 @@ def test_insecure_cookies_allowed_in_local_mode() -> None:
             "import eqp4l.settings as s; assert s.SESSION_COOKIE_SECURE is False",
             SESSION_COOKIE_SECURE="false",
             CSRF_COOKIE_SECURE="false",
+            DJANGO_ALLOWED_HOSTS="localhost",
             **local,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_local_mode_refused_with_non_loopback_host() -> None:
+    bad = _run("import eqp4l.settings", DJANGO_LOCAL="true")  # base hosts: example.test
+    assert bad.returncode != 0
+    assert "ImproperlyConfigured" in bad.stderr
+    ok = _run(
+        "import eqp4l.settings",
+        DJANGO_LOCAL="true",
+        DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1,::1",
+    )
+    assert ok.returncode == 0, ok.stderr
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "local-only-insecure-key-do-not-use-elsewhere",
+        "change-me-local-only-placeholder",
+        "change-me-anything",
+    ],
+)
+def test_placeholder_secret_key_refused_outside_local_mode(key: str) -> None:
+    result = _run("import eqp4l.settings", DJANGO_SECRET_KEY=key)
+    assert result.returncode != 0
+    assert "placeholder" in result.stderr
+
+
+def test_placeholder_secret_key_allowed_in_local_mode() -> None:
+    result = _run(
+        "import eqp4l.settings",
+        DJANGO_SECRET_KEY="change-me-local-only-placeholder",  # noqa: S106  # nosec B106
+        DJANGO_LOCAL="true",
+        DJANGO_ALLOWED_HOSTS="localhost",
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_entrypoint_migrates_only_when_opted_in() -> None:
+    entry = (ROOT / "docker/entrypoint.sh").read_text(encoding="utf-8")
+    assert "DJANGO_MIGRATE_ON_START:-0" in entry
+    assert "DJANGO_MIGRATE_ON_START: ${DJANGO_MIGRATE_ON_START:-1}" in (
+        ROOT / "compose.yaml"
+    ).read_text(encoding="utf-8")
 
 
 def test_vite_origins_trusted_only_in_local_mode() -> None:
@@ -58,7 +103,7 @@ def test_vite_origins_trusted_only_in_local_mode() -> None:
     prod = _run(code)
     assert prod.returncode == 0, prod.stderr
     assert "localhost:5173" not in prod.stdout
-    local = _run(code, DJANGO_LOCAL="true")
+    local = _run(code, DJANGO_LOCAL="true", DJANGO_ALLOWED_HOSTS="localhost")
     assert "http://localhost:5173" in local.stdout
     assert "http://127.0.0.1:5173" in local.stdout
 

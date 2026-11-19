@@ -36,6 +36,8 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-insecure-key-do-not-use-elsewhere}
       DJANGO_LOCAL: ${DJANGO_LOCAL:-true}
       DJANGO_SEED_DEV: ${DJANGO_SEED_DEV:-0}
+      # Local only: apply migrations on start (the image default is 0).
+      DJANGO_MIGRATE_ON_START: ${DJANGO_MIGRATE_ON_START:-1}
       # Inside the Compose network the database host is the service name "db" on 5432.
       # The password must be URL-safe (letters and digits) for this URL.
       DATABASE_URL: postgres://${POSTGRES_USER:-eqp4l}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-eqp4l}
