@@ -1,20 +1,20 @@
 # Scope and permission table (B1.1)
 
-**Status: DRAFT for owner approval (gate).** Nothing here is built yet. Changing a row after approval is a requirements change and needs the owner. Sprints 1 and 2 only (MVP, `v1.0.0`).
+**Status: APPROVED by the owner 2026-11-19.** Changing a row now is a requirements change and needs the owner. Sprints 1 and 2 only (MVP, `v1.0.0`).
 
-Sources are cited as in `REQUIREMENTS-DIGEST.md`: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **FE** = `2-Frontend-Requirements.md`, **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (background per GAP-C04), **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 recorded in `TASKS.md` / `.claude/STATE.md`. Where this draft and a source differ, the source wins (GAP-C04). Anything the sources do not decide is marked **OPEN-OWNER** with a question and a recommendation in section 10. Nothing is guessed: a proposed default is only a proposal.
+Sources are cited as in `REQUIREMENTS-DIGEST.md`: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **FE** = `2-Frontend-Requirements.md`, **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (background per GAP-C04), **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 recorded in `TASKS.md` / `.claude/STATE.md`. Where this draft and a source differ, the source wins (GAP-C04). Anything the sources do not decide is answered in section 10 (all decided by the owner on 2026-11-19). Nothing is guessed: a proposed default is only a proposal.
 
 Companion document: `docs/ERD.md` (B1.2).
 
-## Owner decisions needed
+## Owner decisions (2026-11-19)
 
-One line each: question, then the recommendation. Detail in section 10.4.
+Approved, with every recommendation accepted except P19. Detail in section 10.4.
 
-- **P3** Who runs the CSV import and for which locations? Recommend: SA and WA, opening quantities for any location.
-- **P9** May a receiver resolve their own shortfall? Recommend: no.
-- **P19** May a user cancel a sale they recorded themselves? Recommend: yes for SA; a BA's own sale needs another admin (fraud path); always audited.
-- **P20** May BA and FS see stock by location for the warehouse and other branches (FE 4.4:62)? Recommend: own location plus the lookup only.
-- Also in `docs/ERD.md`: E3, E4, E10, E12, E21.
+- **P3** SA and WA run the CSV import; opening quantities for any location.
+- **P9** A receiver may not resolve their own shortfall.
+- **P19** Anyone allowed to cancel a sale (SA, BA) may cancel one they recorded themselves; reason mandatory; always audited; no second-admin requirement; WA and FS still may not cancel (differs from the recommendation).
+- **P20** BA and FS see their own location plus the lookup only.
+- Also in `docs/ERD.md`: E3, E4, E10 (`full_name` and `phone` required), E12 (`numeric(12,3)`), E21.
 
 ## 1. Scope of Sprints 1 and 2 (what the matrix covers)
 
@@ -66,14 +66,14 @@ Any permission can be granted to any user by a Super Admin (P16 answered: OVR s1
 - Nobody else may approve their own request (same sources).
 - The only approval-like decision in Sprints 1-2 is the **receiving decision** at the destination. BE s5:242 says "The sender cannot approve receipt" and gives no Super Admin exception, so `not_self` applies to every role including Super Admin: the user who dispatched cannot record the decision on that dispatch.
 - The approval workflow tables (`approvals` app) are Sprint 4. Not built now.
-- OPEN-OWNER P9: whether the receiver may also resolve their own shortfall (recommendation: no).
+- Owner decision 2026-11-19 (P9): the receiver may not resolve their own shortfall.
 
 ## 6. Shortfall resolution (GAP-C08, OVR s1 #13)
 
 - Resolution paths: return to sender, confirm loss, record damage; a **note is mandatory**; goes through the stock service with ledger and audit entries (B7.3, BE Sprint 2 Day 7).
 - Who: any admin role (Super Admin, Warehouse Admin, Branch Admin), **within the branches it may act in**. Front Staff are refused, even with Receive stock.
 - "Allowed branches" (P8 answered: BE s2:22, s5:243; GAP-C08): the user's permanent location (plus approved temporary access from Sprint 5), matched against the dispatch's origin OR destination.
-- OPEN-OWNER P9: a receiver may not resolve their own shortfall (recommendation).
+- Owner decision 2026-11-19 (P9): a receiver may not resolve their own shortfall (`not_receiver`).
 
 ## 7. Cost and price visibility
 
@@ -84,13 +84,13 @@ Any permission can be granted to any user by a Super Admin (P16 answered: OVR s1
 
 ## 8. The permission matrix (Sprints 1-2)
 
-55 rows. Columns: SA Super Admin, WA Warehouse Admin, BA Branch Admin, FS Front Staff. Items marked P-answered or Technical decision are decided in section 10; only OPEN cells remain open.
+55 rows. Columns: SA Super Admin, WA Warehouse Admin, BA Branch Admin, FS Front Staff. Every item is decided in section 10.
 
 How to read a cell:
 - **Allow**: allowed, no extra condition beyond the global preconditions below.
 - **Deny**: refused (HTTP 403, or 404 where the object must not be revealed; B1.3 decides per endpoint). Every Deny is a test.
 - **If `a` + `b`**: allowed only when all conditions hold; otherwise refused.
-- **OPEN Pn**: not decided; owner question in section 10. Not to be built or tested until answered.
+- No OPEN cells remain: every question is answered in section 10.
 
 Global preconditions for every row except `auth.login`: authenticated session (else 401), account Active, active branch valid for the user (section 4). The conditions:
 
@@ -102,6 +102,7 @@ Global preconditions for every row except `auth.login`: authenticated session (e
 | `active_id_name_only` | Only id and name of active branches are returned. |
 | `active_or_discontinued_with_stock` | BA and FS see Active items and Discontinued items that still hold stock at their location; never Draft (Technical decision P4). |
 | `own_sales_only` | FS sees only sales they recorded (P10 answered). |
+| `not_receiver` | The caller did not record the receiving decision on that dispatch (P9). |
 | `not_self_target` | The target user is not the caller. |
 | `not_last_active_sa` | The change would not leave zero active Super Admins (Technical decision P15). |
 | `origin_is_own_location` | The dispatch's origin is the caller's location. |
@@ -146,7 +147,7 @@ Global preconditions for every row except `auth.login`: authenticated session (e
 | 30 | `price.read` | B6.1 | Read the selling price (price list) | Allow | Allow | Allow | Allow | OVR s1 #7; FE 4.9 | Not part of the cross-branch lookup (that shows name and quantity only). |
 | 31 | `price.set` | B6.1 | Set or change the selling price of an SKU (not negative) | Allow | If `perm:manage_prices` | If `perm:manage_prices` | If `perm:manage_prices` | OVR s1 #7, #15; BE s3.7; GAP-C06; OQ-19 | Central price list, one row per SKU. Every change is audited with old and new values. Any user may hold manage_prices (P16 answered), granted by SA. |
 | 32 | `stock.list_own_location` | B4.4 | Stock balances at my active location (available, on hand, reserved, quarantined) | Allow | If `own_location` | If `own_branch` | If `own_branch` | FE 4.4; BE s2 | Cost never included for BA and FS. Branch isolation applies. |
-| 33 | `stock.list_other_locations` | B4.4 | Stock balances at locations other than my own (full figures, e.g. warehouse stock shown to branch users) | Allow | Deny | **OPEN P20** | **OPEN P20** | FE 4.4:62 (Stock by location: the warehouse and each branch, in the BA and FS Stock menu) vs SKILLS Unauthorised operations and BE s2 (no other branch's data except the lookup) | OPEN-OWNER P20: the sources conflict for BA and FS. WA denied (P13 answered: warehouse balances plus the lookup; SPEC 6:381). |
+| 33 | `stock.list_other_locations` | B4.4 | Stock balances at locations other than my own (full figures, e.g. warehouse stock shown to branch users) | Allow | Deny | Deny | Deny | FE 4.4:62 (Stock by location: the warehouse and each branch, in the BA and FS Stock menu) vs SKILLS Unauthorised operations and BE s2 (no other branch's data except the lookup) | Owner decision 2026-11-19 (P20): BA and FS see their own location plus the cross-branch lookup only (overrides the broader reading of FE 4.4:62). WA denied too (P13 answered: warehouse balances plus the lookup; SPEC 6:381). |
 | 34 | `find.search` | B6.3 | Search items by name, SKU, brand, model with stock at my location | Allow | Allow | Allow | Allow | BE s3.10; FE 4.5 |  |
 | 35 | `stock.lookup_other_branches` | B6.3 | Cross-branch lookup: other branches' available quantity | Allow | Allow | Allow | Allow | BE s2:27; OVR s2 | Branch name and available quantity only; branches only, not the warehouse (P14 answered). No prices, costs, customers or sales. Explicit exception to isolation. |
 | 36 | `grn.create` | B5.1 | Record a warehouse receipt (supplier, lines, quantity, unit cost) | Allow | Allow | Deny | Deny | BE s4; SPEC 4.4:212; FE 4.6:68; OVR s1 assumptions:40 | P6 answered: receive_stock covers branch receiving only, so FS cannot create warehouse receipts. Idempotency key required. Never edited afterwards. |
@@ -157,15 +158,15 @@ Global preconditions for every row except `auth.login`: authenticated session (e
 | 41 | `dispatch.read` | B5.3 | Read one dispatch with its lines and discrepancies | Allow | If `origin_is_own_location` | If `destination_is_active_branch` | If `destination_is_active_branch` + `perm:receive_stock` | FE 4.7, 4.8; OVR s2:50 | Cost never shown. FS needs receive_stock (P7 answered). |
 | 42 | `dispatch.receive` | B5.3 | Receiving decision: approve all, approve partially (note), reject (reason) | If `destination_is_active_branch` + `not_self` | Deny | If `destination_is_active_branch` + `not_self` | If `destination_is_active_branch` + `perm:receive_stock` + `not_self` | BE s5:242 (the sender cannot approve receipt), s13; OVR s1 assumptions:40 | No Super Admin exception: BE s5 gives none, so not_self applies to SA too. Credits accepted quantity only. Idempotency key required. |
 | 43 | `discrepancy.read` | B5.3/B7.3 | List and read dispatch discrepancies | Allow | If `allowed_branch` | If `allowed_branch` | If `destination_is_active_branch` + `perm:receive_stock` | BE s5 step 6; FE 4.8; OVR s2:50 | FS sees the flags of dispatches they may receive (P7 answered), not an admin list. |
-| 44 | `discrepancy.resolve_return` | B7.3 | Resolve: return to sender (note required) | Allow | If `allowed_branch` | If `allowed_branch` | Deny | GAP-C08; OVR s1 #13; BE s5 step 6; TASKS B7.3 | Any admin role within its allowed branches; front staff refused. P8 answered: allowed locations = permanent location (plus approved temporary access from Sprint 5) matched against the dispatch origin OR destination (BE s2:22, s5:243; GAP-C08). OPEN-OWNER P9: whether the receiver may resolve their own shortfall (recommendation: no). |
-| 45 | `discrepancy.resolve_loss` | B7.3 | Resolve: confirm loss (note required) | Allow | If `allowed_branch` | If `allowed_branch` | Deny | GAP-C08; BE s5 step 6 | As above (P8 answered; OPEN-OWNER P9). |
-| 46 | `discrepancy.resolve_damage` | B7.3 | Resolve: record damage (note required) | Allow | If `allowed_branch` | If `allowed_branch` | Deny | GAP-C08; BE s5 step 6 | As above (P8 answered; OPEN-OWNER P9). |
+| 44 | `discrepancy.resolve_return` | B7.3 | Resolve: return to sender (note required) | If `not_receiver` | If `allowed_branch` + `not_receiver` | If `allowed_branch` + `not_receiver` | Deny | GAP-C08; OVR s1 #13; BE s5 step 6; TASKS B7.3 | Any admin role within its allowed branches; front staff refused. P8 answered: allowed locations = permanent location (plus approved temporary access from Sprint 5) matched against the dispatch origin OR destination (BE s2:22, s5:243; GAP-C08). Owner decision 2026-11-19 (P9): the user who recorded the receiving decision may not resolve that shortfall (`not_receiver`, all roles). |
+| 45 | `discrepancy.resolve_loss` | B7.3 | Resolve: confirm loss (note required) | If `not_receiver` | If `allowed_branch` + `not_receiver` | If `allowed_branch` + `not_receiver` | Deny | GAP-C08; BE s5 step 6 | As above (P8 answered; P9 owner decision: `not_receiver`). |
+| 46 | `discrepancy.resolve_damage` | B7.3 | Resolve: record damage (note required) | If `not_receiver` | If `allowed_branch` + `not_receiver` | If `allowed_branch` + `not_receiver` | Deny | GAP-C08; BE s5 step 6 | As above (P8 answered; P9 owner decision: `not_receiver`). |
 | 47 | `sale.create` | B6.1 | Record a sale at my active branch | Allow | Deny | If `own_branch` | If `own_branch` | BE s6; OVR s2:48; FE s3:35; SPEC 6:381 | P2 answered: WA does not sell. Price comes from the price list; no price field is accepted (override is LATER, Sprint 6, B28.1: P11). Overselling blocked. Idempotency key required. |
 | 48 | `sale.list` | B6.2 | List sales for a branch | Allow | Deny | If `own_branch` | If `own_branch` + `own_sales_only` | BE s6; FE 4.10; SPEC 6:383 | P10 answered: FS sees their own sales only. |
 | 49 | `sale.read` | B6.2 | Read one sale | Allow | Deny | If `own_branch` | If `own_branch` + `own_sales_only` | BE s6; SPEC 6:383 |  |
-| 50 | `sale.cancel` | B6.5 | Cancel a sale (reason required, linked reversal) | Allow | Deny | If `own_branch` | Deny | BE s6, s12:320; FE 4.10:87 | Super Admin and Branch Admin only. OPEN-OWNER P19: may a user cancel a sale they recorded themselves? Recommendation: yes for SA; a BA's own sale needs another admin; always audited. Cancel by SA, and by BA for sales they did not record, is decided; the own-sale rule is untested until answered. |
-| 51 | `import.dry_run` | B6.4 | CSV import dry run (row-numbered error report) | Allow | **OPEN P3** | **OPEN P3** | **OPEN P3** | BE s3.11; TASKS B6.4 | OPEN-OWNER P3. Docs name no role. Recommendation: SA and WA. |
-| 52 | `import.commit` | B6.4 | CSV import commit (items and opening balances as ledger movements) | Allow | **OPEN P3** | **OPEN P3** | **OPEN P3** | BE s3.11; TASKS B6.4 | OPEN-OWNER P3. Recommendation: SA and WA, opening quantities for any location. Idempotency key required. |
+| 50 | `sale.cancel` | B6.5 | Cancel a sale (reason required, linked reversal) | Allow | Deny | If `own_branch` | Deny | BE s6, s12:320; FE 4.10:87 | Super Admin and Branch Admin only. Owner decision 2026-11-19 (P19): anyone allowed to cancel may cancel a sale they recorded themselves; reason mandatory; always audited; no second-admin requirement; WA and FS may not cancel. |
+| 51 | `import.dry_run` | B6.4 | CSV import dry run (row-numbered error report) | Allow | Allow | Deny | Deny | BE s3.11; TASKS B6.4 | Owner decision 2026-11-19 (P3): SA and WA run the import. |
+| 52 | `import.commit` | B6.4 | CSV import commit (items and opening balances as ledger movements) | Allow | Allow | Deny | Deny | BE s3.11; TASKS B6.4 | Owner decision 2026-11-19 (P3): SA and WA; opening quantities for any location. Idempotency key required. |
 | 53 | `ledger.modify` | B4.3 | Update or delete a stock ledger row (no path exists) | Deny | Deny | Deny | Deny | BE s9; SKILLS Database Standards | Includes Super Admin. Tested at model, queryset and database level. |
 | 54 | `audit.modify` | B4.3 | Update or delete an audit row (no path exists) | Deny | Deny | Deny | Deny | BE s9; SKILLS Database Standards | Includes Super Admin. |
 | 55 | `stock.edit_balance_directly` | B4.3 | Edit a stock balance outside the stock service (no path exists) | Deny | Deny | Deny | Deny | BE s3.11, s11; TASKS B4.3 | Corrections are service-made movements only. |
@@ -372,11 +373,10 @@ actions:
     FS: {allow_if: [own_branch]}
   - id: stock.list_other_locations
     step: "B4.4"
-    open_questions: [P20]
     SA: allow
     WA: deny
-    BA: {open: P20}
-    FS: {open: P20}
+    BA: deny
+    FS: deny
   - id: find.search
     step: "B6.3"
     SA: allow
@@ -439,24 +439,21 @@ actions:
     FS: {allow_if: [destination_is_active_branch, perm:receive_stock]}
   - id: discrepancy.resolve_return
     step: "B7.3"
-    open_questions: [P9]
-    SA: allow
-    WA: {allow_if: [allowed_branch]}
-    BA: {allow_if: [allowed_branch]}
+    SA: {allow_if: [not_receiver]}
+    WA: {allow_if: [allowed_branch, not_receiver]}
+    BA: {allow_if: [allowed_branch, not_receiver]}
     FS: deny
   - id: discrepancy.resolve_loss
     step: "B7.3"
-    open_questions: [P9]
-    SA: allow
-    WA: {allow_if: [allowed_branch]}
-    BA: {allow_if: [allowed_branch]}
+    SA: {allow_if: [not_receiver]}
+    WA: {allow_if: [allowed_branch, not_receiver]}
+    BA: {allow_if: [allowed_branch, not_receiver]}
     FS: deny
   - id: discrepancy.resolve_damage
     step: "B7.3"
-    open_questions: [P9]
-    SA: allow
-    WA: {allow_if: [allowed_branch]}
-    BA: {allow_if: [allowed_branch]}
+    SA: {allow_if: [not_receiver]}
+    WA: {allow_if: [allowed_branch, not_receiver]}
+    BA: {allow_if: [allowed_branch, not_receiver]}
     FS: deny
   - id: sale.create
     step: "B6.1"
@@ -478,25 +475,22 @@ actions:
     FS: {allow_if: [own_branch, own_sales_only]}
   - id: sale.cancel
     step: "B6.5"
-    open_questions: [P19]
     SA: allow
     WA: deny
     BA: {allow_if: [own_branch]}
     FS: deny
   - id: import.dry_run
     step: "B6.4"
-    open_questions: [P3]
     SA: allow
-    WA: {open: P3}
-    BA: {open: P3}
-    FS: {open: P3}
+    WA: allow
+    BA: deny
+    FS: deny
   - id: import.commit
     step: "B6.4"
-    open_questions: [P3]
     SA: allow
-    WA: {open: P3}
-    BA: {open: P3}
-    FS: {open: P3}
+    WA: allow
+    BA: deny
+    FS: deny
   - id: ledger.modify
     step: "B4.3"
     SA: deny
@@ -558,11 +552,11 @@ Every earlier question is triaged. Citations were checked against the inventory 
 |---|---|
 | P11 | Price override at sale: not in Sprints 1-2 (no price field is accepted); decided with discounts in Sprint 6 (B28.1). |
 
-### 10.4 OPEN-OWNER
+### 10.4 Owner decisions 2026-11-19
 
-| Ref | Question | Blocks | Recommendation |
-|---|---|---|---|
-| P3 | Who may run the CSV import and for which locations? BE s3.11 and B6.4 name no role. | `import.dry_run`, `import.commit` (WA, BA, FS) | SA and WA; opening quantities for any location. |
-| P9 | May the person who recorded the receiving decision also resolve the resulting shortfall? | `discrepancy.resolve_*` (extra condition) | No: a receiver may not resolve their own shortfall. |
-| P19 | May a user cancel a sale they recorded themselves? (BE s12:320 and FE 4.10:87 restrict cancel to SA and BA but say nothing about the author.) | `sale.cancel` (extra condition) | Yes for SA; a BA's own sale needs another admin (fraud path); always audited. |
-| P20 | May BA and FS see stock by location for the warehouse and other branches (FE 4.4:62: "Stock by location (the warehouse and each branch)" in the BA and FS Stock menu) or only their own location (BE s2 and SKILLS: no other branch's data except the lookup)? | `stock.list_other_locations` (BA, FS) | Own location only plus the lookup; ask FE to show the other locations through the lookup. |
+| Ref | Question | Owner decision |
+|---|---|---|
+| P3 | Who may run the CSV import, for which locations? | SA and WA; opening quantities for any location. |
+| P9 | May a receiver resolve their own shortfall? | No. |
+| P19 | May a user cancel a sale they recorded themselves? | Yes: all who may cancel (SA, BA) may cancel their own sale, reason mandatory, always audited; no second-admin requirement; cancel rights are not extended to WA or FS. |
+| P20 | May BA and FS see stock by location for the warehouse and other branches (FE 4.4:62)? | No: their own location plus the lookup only. |
