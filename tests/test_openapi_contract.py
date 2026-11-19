@@ -91,7 +91,7 @@ def test_cost_fields_are_never_required_and_only_for_cost_roles() -> None:
     assert "average_cost" not in schemas["Item"]["required"]
     # No other response schema carries a cost property.
     for name, schema in schemas.items():
-        if name in {"Item", "GoodsReceiptLine", "GoodsReceiptLineCreate"}:
+        if name in {"Item", "GoodsReceiptLine", "GoodsReceiptLineCreate", "ImportPreviewRow"}:
             continue
         assert not [k for k in schema.get("properties", {}) if "cost" in k], name
 
@@ -206,23 +206,65 @@ def test_replay_header_and_no_200_replay_responses() -> None:
     assert "200" not in op["responses"]
 
 
-def test_owner_pending_proposals_are_marked_and_not_in_permissions() -> None:
+def test_owner_decisions_oq23_are_in_the_matrix_and_the_contract() -> None:
     spec = _spec()
-    assert {o["id"] for o in spec["x-owner-pending"]} == {"C5", "C13", "C12b"}
-    for path, method in (
-        ("/api/v1/auth/change-password/", "post"),
-        ("/api/v1/stock/reorder-levels/{item_id}/", "put"),
+    assert "x-owner-pending" not in spec
+    assert len(MATRIX) == 57
+    for path, method, action in (
+        ("/api/v1/auth/change-password/", "post", "auth.change_password"),
+        ("/api/v1/stock/reorder-levels/{item_id}/", "put", "stock.set_reorder_level"),
     ):
         op = _op(spec, method, path)
-        assert op["x-owner-pending"]
-        assert op["x-proposed-action-id"] not in MATRIX
+        assert op["x-action-id"] == [action]
+        assert action in MATRIX
+        assert "x-owner-pending" not in op
+    assert _op(spec, "put", "/api/v1/stock/reorder-levels/{item_id}/")["x-roles"] == [
+        "super_admin",
+        "warehouse_admin",
+    ]
+    assert _op(spec, "post", "/api/v1/auth/change-password/")["x-roles"] == [
+        "super_admin",
+        "warehouse_admin",
+        "branch_admin",
+        "front_staff",
+    ]
+    assert spec["info"]["version"] == "0.2.0"
 
 
-def test_audit_action_codes_are_an_enum() -> None:
+def test_password_change_required_is_documented() -> None:
+    spec = _spec()
+    forbidden = spec["components"]["responses"]["Forbidden"]
+    example = forbidden["content"]["application/json"]["examples"]["password_change_required"]
+    assert example["value"]["code"] == "password_change_required"
+    assert "must_change_password" in _schemas()["Me"]["required"]
+    assert "password_change_required" in spec["info"]["description"]
+
+
+def test_import_requires_unit_cost_and_shows_it_to_cost_roles_only() -> None:
+    spec = _spec()
+    row = _schemas()["ImportPreviewRow"]
+    assert "unit_cost" in row["required"]
+    assert row["properties"]["unit_cost"]["x-visible-to"] == ["super_admin", "warehouse_admin"]
+    assert "reorder_level" in row["properties"]
+    assert _schemas()["ImportReport"]["properties"]["preview"]["items"] == {
+        "$ref": "#/components/schemas/ImportPreviewRow"
+    }
+    dry_run = _op(spec, "post", "/api/v1/imports/dry-run/")
+    assert dry_run["x-field-action-id"] == ["field.cost.read"]
+    assert dry_run["x-roles"] == ["super_admin", "warehouse_admin"]
+    assert "unit_cost" in str(_schemas()["ImportUpload"])
+
+
+def test_bin_label_is_restored_and_audit_action_is_an_open_string() -> None:
     schemas = _schemas()
-    assert "dispatch.received" in schemas["AuditAction"]["enum"]
-    action = schemas["ActivityEvent"]["properties"]["action"]
-    assert action == {"$ref": "#/components/schemas/AuditAction"}
+    assert "bin_label" in schemas["StockBalance"]["properties"]
+    assert "bin_label" not in schemas["StockBalance"]["required"]
+    action = schemas["AuditAction"]
+    assert action["type"] == "string"
+    assert "enum" not in action
+    assert "dispatch.received" in action["x-known-values"]
+    prop = schemas["ActivityEvent"]["properties"]["action"]
+    assert prop == {"$ref": "#/components/schemas/AuditAction"}
 
 
 # --- the validator rejects bad contracts, each for the right reason -------------------
@@ -304,8 +346,13 @@ def _mutations() -> dict[str, tuple[Any, str]]:
     def no_replay_header(s: dict[str, Any]) -> None:
         del _op(s, "post", "/api/v1/sales/")["responses"]["201"]["headers"]
 
-    def unknown_pending(s: dict[str, Any]) -> None:
-        _op(s, "put", "/api/v1/stock/reorder-levels/{item_id}/")["x-owner-pending"] = ["C99"]
+    def import_cost_no_field_action(s: dict[str, Any]) -> None:
+        del _op(s, "post", "/api/v1/imports/dry-run/")["x-field-action-id"]
+
+    def import_cost_unmarked(s: dict[str, Any]) -> None:
+        del s["components"]["schemas"]["ImportPreviewRow"]["properties"]["unit_cost"][
+            "x-visible-to"
+        ]
 
     return {
         "no action id": (drop_action_id, "x-action-id (a list) is required"),
@@ -327,7 +374,14 @@ def _mutations() -> dict[str, tuple[Any, str]]:
         "money not shared": (money_not_shared, "shared Money schema"),
         "missing endpoint": (missing_endpoint, "action sale.cancel has no endpoint"),
         "wrong version": (old_openapi, "3.1"),
-        "unknown pending id": (unknown_pending, "x-owner-pending C99"),
+        "import preview cost without field action": (
+            import_cost_no_field_action,
+            "reaches cost field unit_cost",
+        ),
+        "import preview cost unmarked": (
+            import_cost_unmarked,
+            "cost field must carry x-visible-to",
+        ),
     }
 
 

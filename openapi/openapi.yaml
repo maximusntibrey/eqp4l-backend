@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Payless4Laptops Inventory & Warehouse API
-  version: 0.1.0
+  version: 0.2.0
   summary: Sprints 1-2 contract (MVP)
   description: 'Contract for Sprints 1 and 2 (the MVP) of the Payless4Laptops Inventory & Warehouse System. Contract-first:
     the backend implements against this file; the frontend generates its typed client and mock responses from it.
@@ -41,11 +41,15 @@ info:
     The receiving body is derived from ERD s3.6. IP address and device are shown to Super Admin only (SKILLS:226).
     Dashboard shell and stats follow FE 4.2:51 and BE s8:271 (P12). Duplicate warnings are non-blocking (BE s3.9).
     Sales list defaults to the active branch. A replay of an idempotent request returns the original status code
-    plus the header Idempotent-Replayed: true (ERD s8). Menu keys follow FE s3. Image size limit 5 MB.
+    plus the header Idempotent-Replayed: true (ERD s8). Menu keys follow FE s3. Image size limit 5 MB. Owner decision
+    2026-11-19 (OQ-23): a server-generated one-time password is shown once when a Super Admin creates or resets
+    a user; until the user changes it (POST /auth/change-password/), every endpoint except change-password, logout
+    and me answers 403 with error code password_change_required; reorder level is set by SA and WA and in the CSV
+    opening-stock import; the import requires unit_cost per row (feeds the average cost; cost shown to SA and WA
+    only).
 
 
-    Pending the owner: x-owner-pending lists proposals (own-password change and one-time passwords, reorder level,
-    import unit cost) that need new PERMISSIONS rows or a decision; x-open lists later items.
+    x-open lists items decided later (status later).
 
 
     Source of truth: docs/PERMISSIONS.md and docs/ERD.md (approved 2026-11-19). Changing this file after B1.3 merges
@@ -221,12 +225,16 @@ paths:
       tags:
       - Auth
       operationId: changePassword
-      summary: Change my own password (PROPOSED)
-      description: 'PROPOSAL C5, owner pending: no PERMISSIONS row exists yet. Proposed action auth.change_password,
-        allowed for every signed-in role. Wrong current password is a 400 naming current_password.'
-      x-action-id: []
-      x-owner-pending:
-      - C5
+      summary: Change my own password
+      description: Own account only, every role (OQ-23). Allowed while a one-time password is still unchanged (it
+        is one of the three endpoints that stay open, with logout and me). Audited.
+      x-action-id:
+      - auth.change_password
+      x-roles:
+      - super_admin
+      - warehouse_admin
+      - branch_admin
+      - front_staff
       requestBody:
         required: true
         content:
@@ -245,12 +253,6 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
-      x-proposed-action-id: auth.change_password
-      x-roles:
-      - super_admin
-      - warehouse_admin
-      - branch_admin
-      - front_staff
   /api/v1/context/branches/:
     get:
       tags:
@@ -560,8 +562,6 @@ paths:
       - user.create
       x-roles:
       - super_admin
-      x-owner-pending:
-      - C5
       requestBody:
         required: true
         content:
@@ -734,8 +734,6 @@ paths:
       - user.reset_password
       x-roles:
       - super_admin
-      x-owner-pending:
-      - C5
       parameters:
       - $ref: '#/components/parameters/UserId'
       security:
@@ -1278,12 +1276,18 @@ paths:
       tags:
       - Stock
       operationId: setReorderLevel
-      summary: Set the reorder level of an item at a location (PROPOSED)
-      description: 'PROPOSAL C13, owner pending: no PERMISSIONS row exists yet. Proposed action stock.set_reorder_level
-        for super_admin (any location) and warehouse_admin (the warehouse).'
-      x-action-id: []
-      x-owner-pending:
-      - C13
+      summary: Set or clear the reorder level of an item at a location
+      description: Super Admin (any location) and Warehouse Admin (the warehouse). Optional per item and location
+        (OQ-23); it drives the low-stock flag. Also a column of the CSV opening-stock import. Audited.
+      x-action-id:
+      - stock.set_reorder_level
+      x-roles:
+      - super_admin
+      - warehouse_admin
+      x-conditions:
+        stock.set_reorder_level:
+          warehouse_admin:
+          - own_location
       parameters:
       - $ref: '#/components/parameters/ItemId'
       requestBody:
@@ -1310,14 +1314,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-      x-proposed-action-id: stock.set_reorder_level
-      x-roles:
-      - super_admin
-      - warehouse_admin
-      x-conditions:
-        stock.set_reorder_level:
-          warehouse_admin:
-          - own_location
   /api/v1/stock/balances/:
     get:
       tags:
@@ -2308,6 +2304,7 @@ paths:
         in: query
         schema:
           $ref: '#/components/schemas/AuditAction'
+        description: Filter by action code (exact match).
       - name: date_from
         in: query
         schema:
@@ -2348,8 +2345,8 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
-      x-owner-pending:
-      - C12b
+      x-field-action-id:
+      - field.cost.read
       x-open:
       - C12
       requestBody:
@@ -2380,8 +2377,8 @@ paths:
       - Imports
       operationId: getImportTemplate
       summary: Download the CSV template of a category
-      description: 'Templates per category (BE s3.11:211), read under the existing import actions: no new permission
-        row.'
+      description: Templates per category (BE s3.11:211), read under the existing import actions. Columns include
+        the required unit_cost and the optional reorder_level (OQ-23).
       x-action-id:
       - import.dry_run
       x-roles:
@@ -2423,8 +2420,6 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
-      x-owner-pending:
-      - C12b
       x-open:
       - C12
       parameters:
@@ -2581,16 +2576,26 @@ components:
             request_id: 0b2e5a8c-3f77-4c1f-9a43-7a2b6f1d9e10
     Forbidden:
       description: Signed in, but this action is not allowed for the caller's role, per-person permission or a caller-specific
-        rule (not_self, not_receiver, not_self_target, not_last_active_sa).
+        rule (not_self, not_receiver, not_self_target, not_last_active_sa). ALSO returned, with error code password_change_required,
+        by every endpoint except change-password, logout and me while the caller still has an unchanged one-time
+        password.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            code: permission_denied
-            message: You are not allowed to do that.
-            errors: []
-            request_id: 0b2e5a8c-3f77-4c1f-9a43-7a2b6f1d9e10
+          examples:
+            permission_denied:
+              summary: Not allowed
+              value:
+                code: permission_denied
+                message: You are not allowed to do that.
+                errors: []
+            password_change_required:
+              summary: One-time password not changed yet
+              value:
+                code: password_change_required
+                message: Please choose a new password before you continue.
+                errors: []
     NotFound:
       description: No such record, or it is outside the caller's scope (another branch, not their own sale, ...).
         The existence of out-of-scope records is not revealed.
@@ -2757,6 +2762,8 @@ components:
       - sale.cancel
       - import.dry_run
       - import.commit
+      - auth.change_password
+      - stock.set_reorder_level
       description: 'A PERMISSIONS.md action ID. ledger.modify, audit.modify and stock.edit_balance_directly never
         appear: no endpoint exists for them.'
     Category:
@@ -3020,7 +3027,8 @@ components:
           $ref: '#/components/schemas/RoleCode'
         must_change_password:
           type: boolean
-          description: True after a one-time password was issued (proposal C5, owner pending).
+          description: True while a one-time password has not been changed. Every endpoint except change-password,
+            logout and me then answers 403 password_change_required.
         permanent_branch:
           oneOf:
           - $ref: '#/components/schemas/BranchRef'
@@ -3264,7 +3272,7 @@ components:
       additionalProperties: false
     OneTimePassword:
       type: object
-      description: Proposal C5 (owner pending).
+      description: Owner decision 2026-11-19 (OQ-23).
       properties:
         one_time_password:
           type: string
@@ -3276,10 +3284,11 @@ components:
       allOf:
       - $ref: '#/components/schemas/User'
       - $ref: '#/components/schemas/OneTimePassword'
-      description: The created user plus the one-time password (proposal C5, owner pending).
+      description: The created user plus the one-time password (OQ-23).
     ChangePassword:
       type: object
-      description: 'Proposal C5 (owner pending): any signed-in user changes their own password.'
+      description: Any signed-in user changes their own password (OQ-23). Wrong current password is a 400 naming
+        current_password. A successful change lifts the password_change_required block.
       properties:
         current_password:
           type: string
@@ -3761,6 +3770,12 @@ components:
         low_stock:
           type: boolean
           description: available is at or below reorder_level.
+        bin_label:
+          oneOf:
+          - type: string
+            description: Warehouse only, optional (ERD s3.4).
+            maxLength: 50
+          - type: 'null'
         qty_in_transit:
           allOf:
           - $ref: '#/components/schemas/Quantity'
@@ -3790,8 +3805,8 @@ components:
         - results
     ReorderLevelSet:
       type: object
-      description: Proposal C13 (owner pending). location is required for Super Admin and implied (the warehouse)
-        for Warehouse Admin; null clears the level.
+      description: OQ-23. location is required for Super Admin and implied (the warehouse) for Warehouse Admin;
+        null clears the level.
       properties:
         location:
           $ref: '#/components/schemas/Id'
@@ -4687,7 +4702,10 @@ components:
       - generated_at
     AuditAction:
       type: string
-      enum:
+      description: 'Audit action code, an OPEN string: new codes may appear without a contract change, so clients
+        must tolerate unknown values. The codes known for Sprints 1-2 are listed in x-known-values (ERD s3.9 gives
+        examples only; BE s9 lists the event kinds).'
+      x-known-values:
       - auth.login
       - auth.login_failed
       - auth.logout
@@ -4716,8 +4734,6 @@ components:
       - sale.completed
       - sale.cancelled
       - import.committed
-      description: Audit action codes. The ERD lists examples only (ERD s3.9); this enum publishes the codes the
-        Sprint 1-2 operations write (BE s9). A new code is a contract change.
     ActivityEvent:
       type: object
       description: One audit event. Cost keys inside previous_value and new_value are removed for branch_admin (never
@@ -4801,9 +4817,9 @@ components:
         file:
           type: string
           format: binary
-          description: 'CSV, UTF-8. Columns follow the downloadable template of the category (BE s3.11:211); the
-            exact list is decided in B6.4. Proposal C12b (owner pending): every opening-balance row needs a unit_cost,
-            which feeds the average cost (ERD E7).'
+          description: CSV, UTF-8. Columns follow the downloadable template of the category (BE s3.11:211); the
+            exact list is decided in B6.4. Every opening-balance row requires unit_cost (feeds the average cost,
+            ERD E7; OQ-23) and may carry an optional reorder_level.
       required:
       - file
     ImportRowError:
@@ -4825,6 +4841,45 @@ components:
       - row
       - field
       - message
+    ImportPreviewRow:
+      type: object
+      description: One parsed row as it would be imported (columns beyond these are decided in B6.4).
+      properties:
+        row:
+          type: integer
+          description: CSV row number (the header is row 1).
+          minimum: 2
+        sku:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        location_code:
+          type: string
+          description: Public code of the location receiving the opening quantity.
+        opening_quantity:
+          $ref: '#/components/schemas/Quantity'
+        reorder_level:
+          oneOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+        unit_cost:
+          $ref: '#/components/schemas/Money'
+          description: Cost per unit of the opening stock; required in the file; feeds the average cost (ERD E7).
+            The import is open to Super Admin and Warehouse Admin only, and cost is never shown to any other role.
+          x-visible-to:
+          - super_admin
+          - warehouse_admin
+      required:
+      - row
+      - sku
+      - name
+      - category
+      - location_code
+      - opening_quantity
+      - reorder_level
+      - unit_cost
     ImportReport:
       type: object
       description: Dry-run result. Nothing is written.
@@ -4848,8 +4903,7 @@ components:
         preview:
           type: array
           items:
-            type: object
-            additionalProperties: true
+            $ref: '#/components/schemas/ImportPreviewRow'
           maxItems: 20
           description: The first rows as they would be imported.
         can_commit:
@@ -4899,17 +4953,4 @@ x-open:
     per BE s3.11:211; an existing SKU is a row error).'
 - id: C18
   status: later
-  text: No endpoint reads the stock ledger movement log in Sprints 1-2; history endpoints are Sprint 5 Day 24. Bin
-    label is also later.
-x-owner-pending:
-- id: C5
-  text: 'Proposal: the server generates a one-time password, shown once, when a Super Admin creates or resets a
-    user; every signed-in user can change their own password (POST /auth/change-password/, proposed action auth.change_password,
-    all roles). PERMISSIONS s1 lists own-password change as out of scope, so this needs a new row.'
-- id: C13
-  text: 'Proposal: an optional reorder_level per item per location, settable by Super Admin and Warehouse Admin
-    (PUT /stock/reorder-levels/{item_id}/, proposed action stock.set_reorder_level) and in the B6.4 import. Needs
-    a new PERMISSIONS row.'
-- id: C12b
-  text: 'Proposal: the CSV opening-balance import requires a unit_cost per row, because it feeds the average cost
-    (ERD E7); alternative is no cost, leaving the average empty until the first receipt.'
+  text: No endpoint reads the stock ledger movement log in Sprints 1-2; history endpoints are Sprint 5 Day 24.

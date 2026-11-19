@@ -204,7 +204,6 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
     security_schemes = set(components.get("securitySchemes", {}))
     tag_names = {t["name"] for t in spec.get("tags", [])}
     open_ids = {o["id"] for o in spec.get("x-open", [])}
-    pending_ids = {o["id"] for o in spec.get("x-owner-pending", [])}
 
     # --- references -----------------------------------------------------------------
     used_schemas: set[str] = set()
@@ -288,11 +287,7 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
             if not isinstance(ids, list):
                 err(f"{where}: x-action-id (a list) is required")
                 ids = []
-            proposed = op.get("x-proposed-action-id")
-            if proposed:
-                if not op.get("x-owner-pending") or not op.get("x-roles"):
-                    err(f"{where}: a proposed action needs x-owner-pending and x-roles")
-            elif not ids and not public:
+            if not ids and not public:
                 err(f"{where}: no x-action-id and not marked x-public")
             if ids and public and ids != ["auth.login"]:
                 err(f"{where}: x-public operations carry no action ID (except auth.login)")
@@ -315,9 +310,6 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
             for ref_id in op.get("x-open", []):
                 if ref_id not in open_ids:
                     err(f"{where}: x-open {ref_id} is not listed in the top-level x-open")
-            for ref_id in op.get("x-owner-pending", []):
-                if ref_id not in pending_ids:
-                    err(f"{where}: x-owner-pending {ref_id} is not listed at the top level")
 
             # cost in responses, followed through $ref, arrays and inline schemas
             reached = _response_cost_fields(spec, op)

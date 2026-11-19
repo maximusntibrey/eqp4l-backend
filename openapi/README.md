@@ -48,4 +48,4 @@ After B1.3 merges, a change is a contract change (TASKS 0.2): propose, agree wit
 
 ## drf-spectacular
 
-The views will publish their own schema with drf-spectacular (`SPECTACULAR_SETTINGS`, version `0.1.0`). Once the endpoints exist, the generated output **must be diffed against this file** in CI, and any difference is fixed in the code or proposed as a contract change. That check is not added yet: there is nothing to generate until B2+ builds the views (add it in the first step that serves `/api/v1/` endpoints).
+The views will publish their own schema with drf-spectacular (`SPECTACULAR_SETTINGS`, version `0.2.0`). Once the endpoints exist, the generated output **must be diffed against this file** in CI, and any difference is fixed in the code or proposed as a contract change. That check is not added yet: there is nothing to generate until B2+ builds the views (add it in the first step that serves `/api/v1/` endpoints).
