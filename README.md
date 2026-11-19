@@ -55,7 +55,7 @@ docker compose exec app python manage.py check --database default   # settings +
 docker compose down                 # stop (keeps the data); add -v to also delete the volume
 ```
 
-The app answers on `http://127.0.0.1:8000/`. There is no `/health/` yet (O1.7). Use `127.0.0.1`, not `localhost`, on Windows. If port 5432 is taken, set `POSTGRES_PORT` in `.env` (and in `DATABASE_URL`).
+The app answers on `http://127.0.0.1:8000/health/` (200 `ok` when the app and database are up, 503 `unavailable` otherwise); `docker compose ps` shows the app as healthy. Use `127.0.0.1`, not `localhost`, on Windows. If port 5432 is taken, set `POSTGRES_PORT` in `.env` (and in `DATABASE_URL`).
 
 ## Backup and restore (T.14)
 

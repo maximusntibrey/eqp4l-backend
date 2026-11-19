@@ -1,9 +1,13 @@
 """Root URL configuration.
 
-Empty on purpose (step B1.0, tooling only). Endpoints are added from the approved
-endpoint list (B1.3) under /api/v1/, and /health/ in O1.7.
+/health/ is the only route until the approved endpoint list (B1.3) adds endpoints under
+/api/v1/.
 """
 
-from django.urls import URLPattern, URLResolver
+from django.urls import URLPattern, URLResolver, path
 
-urlpatterns: list[URLPattern | URLResolver] = []
+from eqp4l.health import health
+
+urlpatterns: list[URLPattern | URLResolver] = [
+    path("health/", health, name="health"),
+]

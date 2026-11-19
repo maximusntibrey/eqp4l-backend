@@ -11,7 +11,8 @@ Scope (step B1.0, tooling only): no project apps, no models and no migrations ye
 from pathlib import Path
 
 import environ
-import sentry_sdk
+
+from eqp4l.monitoring import init_sentry
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -145,11 +146,11 @@ SPECTACULAR_SETTINGS = {
 
 # --- Error monitoring (Sentry, T.13) ----------------------------------------------------
 
-# Off unless SENTRY_DSN is set in the environment. The DSN never goes in git.
+# Off unless SENTRY_DSN is set in the environment. The DSN never goes in git. The
+# environment tag and the release come from the environment too (DevOps s8).
 SENTRY_DSN: str = env("SENTRY_DSN", default="")
-if SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        environment=env("SENTRY_ENVIRONMENT", default="local"),
-        send_default_pii=False,  # never send personal data (SKILLS rule 17)
-    )
+init_sentry(
+    dsn=SENTRY_DSN,
+    environment=env("SENTRY_ENVIRONMENT", default="local"),
+    release=env("SENTRY_RELEASE", default=""),
+)

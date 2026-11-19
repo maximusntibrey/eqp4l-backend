@@ -37,6 +37,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      # /health/ checks the app and the database. The Host header is the first allowed host.
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os,sys,urllib.request as u;
+          h=os.environ.get("DJANGO_ALLOWED_HOSTS","127.0.0.1").split(",")[0];
+          r=u.Request("http://127.0.0.1:8000/health/",headers={"Host":h});
+          sys.exit(0 if u.urlopen(r,timeout=4).status==200 else 1)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
 volumes:
