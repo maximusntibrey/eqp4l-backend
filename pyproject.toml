@@ -29,13 +29,12 @@ select = [
   "RUF",      # ruff-specific
 ]
 
+[tool.ruff.lint.per-file-ignores]
 # RUF012 flags the Django idioms `class Meta`, `dependencies` and `operations` lists.
 # DJ008: models are not shown in the Django admin (no admin site in this API-only project).
-ignore = ["RUF012", "DJ008"]
-
-[tool.ruff.lint.per-file-ignores]
-# Generated migrations: long lines are not ours to wrap.
-"**/migrations/*.py" = ["E501"]
+# E501: generated migrations are not ours to wrap.
+"**/models.py" = ["RUF012", "DJ008"]
+"**/migrations/*.py" = ["RUF012", "E501"]
 "tests/**" = ["S101"]
 "**/tests/**" = ["S101"]
 "**/test_*.py" = ["S101"]

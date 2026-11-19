@@ -23,6 +23,17 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY manage.py ./
 COPY eqp4l ./eqp4l
+# Every project app (B2.1). A new app must be added here; tests/test_local_run.py checks
+# that this list matches INSTALLED_APPS.
+COPY accounts ./accounts
+COPY audit ./audit
+COPY branches ./branches
+COPY inventory ./inventory
+COPY roles ./roles
+COPY sales ./sales
+COPY stock_ledger ./stock_ledger
+COPY transfers ./transfers
+COPY warehouse ./warehouse
 # Entrypoint: waits for the db, migrates, optional seed (FIX-1). sed strips any CR so a
 # CRLF checkout on Windows still runs; .gitattributes also keeps it LF.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh

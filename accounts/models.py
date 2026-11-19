@@ -59,10 +59,18 @@ class User(AuditFields, AbstractBaseUser):
     )
     deactivated_at = models.DateTimeField(null=True, blank=True)
     # OQ-23 C5: set when a Super Admin creates or resets the user; cleared on password change.
-    must_change_password = models.BooleanField(default=False)
+    must_change_password = models.BooleanField(default=False, db_default=False)
 
     USERNAME_FIELD = "login_id"
     REQUIRED_FIELDS = ["full_name", "phone"]
+
+    # ERD s3.1: the first user is seeded, so only here the audit users may be null.
+    created_by = models.ForeignKey(  # type: ignore[assignment]
+        "self", null=True, blank=True, editable=False, on_delete=models.PROTECT, related_name="+"
+    )
+    updated_by = models.ForeignKey(  # type: ignore[assignment]
+        "self", null=True, blank=True, editable=False, on_delete=models.PROTECT, related_name="+"
+    )
 
     objects = UserManager()
 

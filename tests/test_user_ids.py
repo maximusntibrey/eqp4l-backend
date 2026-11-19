@@ -209,18 +209,27 @@ def test_factory_built_users_do_not_need_the_generator() -> None:
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.usefixtures("fresh_sequences")
 def test_concurrent_creation_never_issues_the_same_id_twice() -> None:
-    per_thread = 15
+    """Two connections each hold an open transaction at the same moment while creating."""
+    rounds = 8
     barrier = threading.Barrier(2)
     issued: list[list[str]] = [[], []]
+    backends: set[int] = set()
     errors: list[BaseException] = []
 
     def worker(index: int) -> None:
         try:
-            barrier.wait(timeout=10)
-            for _ in range(per_thread):
-                issued[index].append(_create().login_id)
+            for _ in range(rounds):
+                with transaction.atomic():
+                    issued[index].append(_create().login_id)
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT pg_backend_pid()")
+                        row = cursor.fetchone()
+                    assert row is not None
+                    backends.add(row[0])
+                    barrier.wait(timeout=10)  # both transactions are open here
         except BaseException as exc:
             errors.append(exc)
+            barrier.abort()
         finally:
             connections.close_all()
 
@@ -231,11 +240,11 @@ def test_concurrent_creation_never_issues_the_same_id_twice() -> None:
         thread.join(timeout=60)
 
     assert not errors
+    assert len(backends) == 2  # really two database connections
     everyone = issued[0] + issued[1]
-    assert len(everyone) == 2 * per_thread
-    assert len(set(everyone)) == len(everyone)  # no duplicates
-    assert set(everyone) == {f"USR-{n:04d}" for n in range(1, 2 * per_thread + 1)}  # no gaps
-    assert User.objects.count() == 2 * per_thread
+    assert len(set(everyone)) == len(everyone) == 2 * rounds  # no duplicates
+    assert set(everyone) == {f"USR-{n:04d}" for n in range(1, 2 * rounds + 1)}  # no gaps
+    assert User.objects.count() == 2 * rounds
 
 
 @pytest.mark.django_db(transaction=True)

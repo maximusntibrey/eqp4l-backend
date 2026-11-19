@@ -7,15 +7,13 @@ from django.db import models
 class AuditFields(models.Model):
     """``created_at``, ``created_by``, ``updated_at``, ``updated_by`` (BE s3.2; ERD s2).
 
-    The two user columns are nullable only so that rows created by a data migration or the
-    seed (no signed-in actor) are possible; the services always set them.
+    The two user columns are required (NOT NULL). Only ``accounts.User`` overrides them as
+    nullable, because the first user (SA-0001) is seeded (ERD s3.1).
     """
 
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
         editable=False,
         on_delete=models.PROTECT,
         related_name="+",
@@ -23,8 +21,6 @@ class AuditFields(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
         editable=False,
         on_delete=models.PROTECT,
         related_name="+",

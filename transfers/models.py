@@ -52,7 +52,10 @@ class Dispatch(models.Model):
         unique=True,
     )
     kind = models.CharField(
-        max_length=20, choices=DispatchKind.choices, default=DispatchKind.WAREHOUSE_DISPATCH
+        max_length=20,
+        choices=DispatchKind.choices,
+        default=DispatchKind.WAREHOUSE_DISPATCH,
+        db_default="warehouse_dispatch",
     )
     origin = models.ForeignKey(
         "branches.Branch", on_delete=models.PROTECT, related_name="dispatches_out"
@@ -118,9 +121,12 @@ class DispatchLine(models.Model):
     qty_received = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     qty_accepted = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     qty_rejected = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
-    qty_resolved = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    qty_resolved = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_default=0)
     status = models.CharField(
-        max_length=24, choices=LineStatus.choices, default=LineStatus.IN_TRANSIT
+        max_length=24,
+        choices=LineStatus.choices,
+        default=LineStatus.IN_TRANSIT,
+        db_default="in_transit",
     )
 
     class Meta:

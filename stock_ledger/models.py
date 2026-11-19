@@ -1,7 +1,7 @@
 """The idempotency record and the append-only stock ledger (ERD s3.8, s7).
 
 Rows are inserted only by the stock service (B4.3). Updates and deletes are refused by the
-model, the queryset and database triggers (migration ``0001``).
+model, the queryset and database triggers (migration ``0002``).
 """
 
 from django.conf import settings
@@ -55,7 +55,7 @@ class Operation(AppendOnlyModel):
     operation_type = models.CharField(max_length=24, choices=OperationType.choices)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     request_hash = models.CharField(max_length=64)
-    metadata = models.JSONField(default=dict)
+    metadata = models.JSONField(default=dict, db_default={})
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

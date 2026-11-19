@@ -14,16 +14,6 @@ from stock_ledger.models import Operation, OperationType
 _login_numbers = itertools.count(7000)
 
 
-class BranchFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Branch
-
-    code = factory.Sequence(lambda n: f"BR-{n + 100:03d}")
-    name = factory.Sequence(lambda n: f"Branch {n}")
-    kind = "branch"
-    status = "active"
-
-
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
@@ -33,6 +23,18 @@ class UserFactory(factory.django.DjangoModelFactory):
     phone = "0240000000"
     status = UserStatus.ACTIVE
     password = "!"  # noqa: S105  # nosec B105 - unusable hash, not a secret
+
+
+class BranchFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Branch
+
+    code = factory.Sequence(lambda n: f"BR-{n + 100:03d}")
+    name = factory.Sequence(lambda n: f"Branch {n}")
+    kind = "branch"
+    status = "active"
+    created_by = factory.SubFactory(UserFactory)
+    updated_by = factory.SubFactory(UserFactory)
 
 
 class BrandFactory(factory.django.DjangoModelFactory):
@@ -62,6 +64,8 @@ class ItemFactory(factory.django.DjangoModelFactory):
     model_name = "Model X"
     mpn = "MPN-1"
     condition = "new"
+    created_by = factory.SubFactory(UserFactory)
+    updated_by = factory.SubFactory(UserFactory)
 
 
 class OperationFactory(factory.django.DjangoModelFactory):

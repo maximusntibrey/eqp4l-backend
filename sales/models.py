@@ -38,7 +38,10 @@ class Sale(models.Model):
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT, related_name="+")
     total = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(
-        max_length=10, choices=SaleStatus.choices, default=SaleStatus.COMPLETED
+        max_length=10,
+        choices=SaleStatus.choices,
+        default=SaleStatus.COMPLETED,
+        db_default="completed",
     )
     sold_at = models.DateTimeField()
     cancelled_by = models.ForeignKey(

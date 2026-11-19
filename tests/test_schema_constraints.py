@@ -5,12 +5,15 @@ validation) to refuse it. A good row for the same shape is accepted, so a reject
 constraint and not a typo in the test data.
 """
 
+import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from decimal import Decimal as D
+from typing import Any
 
 import pytest
-from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.db import DatabaseError, IntegrityError, connection, connections, transaction
 from django.utils import timezone
 
 from accounts.models import User
@@ -182,6 +185,11 @@ def test_branch_code_is_unique() -> None:
         make_branch(code="BR-900")
 
 
+def _price(**kw: Any) -> Price:
+    actor = make_user()
+    return Price.objects.create(created_by=actor, updated_by=actor, **kw)
+
+
 # --- inventory -------------------------------------------------------------------------
 
 
@@ -257,33 +265,33 @@ def test_stock_balance_has_no_available_or_in_transit_column() -> None:
 
 def test_price_is_never_negative() -> None:
     with rejected():
-        Price.objects.create(item=make_item(), amount=D("-0.01"), set_by=make_user())
+        _price(item=make_item(), amount=D("-0.01"), set_by=make_user())
 
 
 def test_price_scope_and_branch_must_agree() -> None:
     item, user, branch = make_item(), make_user(), make_branch()
     with rejected():
-        Price.objects.create(item=item, scope="central", branch=branch, amount=D(1), set_by=user)
+        _price(item=item, scope="central", branch=branch, amount=D(1), set_by=user)
     with rejected():
-        Price.objects.create(item=item, scope="branch", branch=None, amount=D(1), set_by=user)
+        _price(item=item, scope="branch", branch=None, amount=D(1), set_by=user)
     with rejected():
-        Price.objects.create(item=item, scope="regional", amount=D(1), set_by=user)
-    Price.objects.create(item=item, scope="branch", branch=branch, amount=D(1), set_by=user)
+        _price(item=item, scope="regional", amount=D(1), set_by=user)
+    _price(item=item, scope="branch", branch=branch, amount=D(1), set_by=user)
 
 
 def test_one_current_central_price_per_sku_but_closed_rows_are_allowed() -> None:
     item, user = make_item(), make_user()
-    old = Price.objects.create(item=item, amount=D("100.00"), set_by=user)
+    old = _price(item=item, amount=D("100.00"), set_by=user)
     with rejected():
-        Price.objects.create(item=item, amount=D("120.00"), set_by=user)
+        _price(item=item, amount=D("120.00"), set_by=user)
     old.effective_to = timezone.now()
     old.save()
-    Price.objects.create(item=item, amount=D("120.00"), set_by=user)
+    _price(item=item, amount=D("120.00"), set_by=user)
     assert Price.objects.filter(item=item).count() == 2
 
 
 def test_price_amount_is_two_decimals() -> None:
-    price = Price.objects.create(item=make_item(), amount=D("10.005"), set_by=make_user())
+    price = _price(item=make_item(), amount=D("10.005"), set_by=make_user())
     price.refresh_from_db()
     assert price.amount == D("10.01")
 
@@ -726,3 +734,113 @@ def test_other_item_fields_stay_editable_after_use() -> None:
     entry = _entry()
     Item.objects.filter(pk=entry.item_id).update(name="Renamed")
     assert Item.objects.get(pk=entry.item_id).name == "Renamed"
+
+
+# --- audit fields, database defaults, nullable bin_label -----------------------------------
+
+
+@pytest.mark.parametrize("field", ["created_by", "updated_by"])
+@pytest.mark.parametrize("factory", ["branch", "item"])
+def test_audit_users_are_required_except_on_the_user_table(factory: str, field: str) -> None:
+    make = make_branch if factory == "branch" else make_item
+    with rejected():
+        make(**{field: None})
+
+
+def test_the_user_table_may_have_no_audit_users() -> None:
+    assert make_user(created_by=None, updated_by=None).pk
+
+
+def test_price_audit_users_are_required() -> None:
+    with rejected():
+        Price.objects.create(item=make_item(), amount=D(1), set_by=make_user())
+
+
+def test_database_defaults_exist_where_the_erd_gives_a_default() -> None:
+    expected = {
+        ("accounts_user", "must_change_password"): "false",
+        ("inventory_item", "uom"): "'piece'",
+        ("inventory_item", "status"): "'draft'",
+        ("inventory_item", "specs"): "'{}'",
+        ("inventory_item", "show_on_website"): "false",
+        ("inventory_stockbalance", "on_hand"): "0",
+        ("inventory_stockbalance", "reserved"): "0",
+        ("inventory_stockbalance", "quarantined"): "0",
+        ("inventory_price", "scope"): "'central'",
+        ("sales_sale", "status"): "'completed'",
+        ("transfers_dispatch", "kind"): "'warehouse_dispatch'",
+        ("transfers_dispatchline", "status"): "'in_transit'",
+        ("transfers_dispatchline", "qty_resolved"): "0",
+        ("stock_ledger_operation", "metadata"): "'{}'",
+        ("audit_auditevent", "self_approved"): "false",
+    }
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT table_name, column_name, column_default FROM information_schema.columns "
+            "WHERE table_schema = 'public'"
+        )
+        actual = {(t, c): d for t, c, d in cursor.fetchall()}
+    for key, value in expected.items():
+        assert actual[key] is not None, key
+        assert actual[key].startswith(value), (key, actual[key])
+
+
+def test_bin_label_is_stored_as_null_when_unset() -> None:
+    row = StockBalance.objects.create(item=make_item(), location=make_branch())
+    row.refresh_from_db()
+    assert row.bin_label is None
+
+
+def test_a_row_inserted_without_python_defaults_gets_the_database_defaults() -> None:
+    item = make_item()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO inventory_stockbalance (item_id, location_id, updated_at) "
+            "VALUES (%s, %s, now()) RETURNING on_hand, reserved, quarantined",
+            [item.pk, make_branch().pk],
+        )
+        assert cursor.fetchone() == (0, 0, 0)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_resolutions_cannot_both_pass_the_quantity_backstop() -> None:
+    """Flagged 5; two connections each try to resolve 3 at the same time: only one may win."""
+    discrepancy = _discrepancy("3", "2")
+    first_inserted, second_started = threading.Event(), threading.Event()
+    outcome: dict[str, object] = {}
+
+    def first() -> None:
+        try:
+            with transaction.atomic():
+                _resolve(discrepancy, "3")
+                first_inserted.set()
+                second_started.wait(timeout=10)
+                time.sleep(0.5)  # the second insert is now waiting on the discrepancy lock
+            outcome["first"] = "ok"
+        except DatabaseError as exc:
+            outcome["first"] = exc
+        finally:
+            connections.close_all()
+
+    def second() -> None:
+        try:
+            first_inserted.wait(timeout=10)
+            second_started.set()
+            with transaction.atomic():
+                _resolve(discrepancy, "3")
+            outcome["second"] = "ok"
+        except DatabaseError as exc:
+            outcome["second"] = exc
+        finally:
+            connections.close_all()
+
+    threads = [threading.Thread(target=first), threading.Thread(target=second)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+
+    assert outcome["first"] == "ok"
+    assert isinstance(outcome["second"], DatabaseError)
+    assert "exceed" in str(outcome["second"])
+    assert DiscrepancyResolution.objects.filter(discrepancy=discrepancy).count() == 1

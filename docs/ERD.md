@@ -61,7 +61,7 @@ Legend: PK primary key, FK foreign key, UQ unique, NN not null, CK check.
 | must_change_password | boolean NN default false | OQ-23 C5. Set by the service when a Super Admin creates or resets the user (a one-time password is issued); while true every endpoint except change-password, logout and me answers 403 `password_change_required`; cleared when the user changes their password. Contract field `Me.must_change_password`. |
 | audit fields | | `created_by` self-FK null (first user, `SA-0001`, is seeded). |
 
-ID generator (B2.2): two PostgreSQL sequences, `accounts_sa_seq` and `accounts_usr_seq`, created in the first migration. `login_id` = prefix + `nextval` zero-padded to 4 digits (5+ digits after 9999). Sequences are non-transactional, so a rolled-back creation burns a number but can never reuse one. The prefix is fixed at creation by the user's first role; later role changes never change the ID (E8).
+ID generator (B2.2): two PostgreSQL sequences, `accounts_sa_seq` and `accounts_usr_seq`, created in migration `accounts/0003` (the user table itself is in the first migration). `login_id` = prefix + `nextval` zero-padded to 4 digits (5+ digits after 9999). Sequences are non-transactional, so a rolled-back creation burns a number but can never reuse one. The prefix is fixed at creation by the user's first role; later role changes never change the ID (E8).
 
 Indexes: UQ `login_id`; `(status)`; `(permanent_branch)`.
 
@@ -147,7 +147,7 @@ Indexes: UQ `sku`; `(status)`; `(category, brand)`; trigram or `lower()` index o
 | reserved | numeric(12,3) NN default 0 | CK `reserved >= 0` and CK `reserved <= on_hand`. |
 | quarantined | numeric(12,3) NN default 0 | CK `quarantined >= 0`. Outside on hand and unsellable (OQ-18). |
 | reorder_level | numeric(12,3) null | Per location; drives low-stock (B7.1). CK `>= 0`. |
-| bin_label | varchar(50) | Warehouse only, optional (BE s3.8). |
+| bin_label | varchar(50) null | Warehouse only, optional (BE s3.8); stored as NULL when unset. |
 | updated_at | timestamptz NN | |
 
 - UQ `(item, location)`.
@@ -676,7 +676,7 @@ Changes and choices made when the schema was built. None changes a rule in secti
 |---|---|---|
 | N1 | `accounts_user.must_change_password` added (section 3.1). | OQ-23 C5; contract 0.2.0 `Me` |
 | N2 | `inventory_stockbalance.reorder_level` and `bin_label` were already in section 3.4 and are built as written; both are in the mermaid diagram now. | OQ-23 C13; contract `StockBalance` |
-| N3 | `created_by` / `updated_by` are nullable on every table that has audit fields, so rows made by a data migration or the seed (no signed-in actor) are possible. The services always set them. | ERD s3.1 (first user is seeded) |
 | N4 | Trigram search indexes (`pg_trgm`, GIN) are on the plain columns `name`, `model_name` and `sku`; they also serve case-insensitive `ILIKE`. | ERD s3.4 ("trigram or lower() index") |
+| N7 | Database defaults (`DEFAULT`) exist for every column the ERD gives a default: `must_change_password`, item `uom`, `specs`, `show_on_website`, `status`, balance buckets, price `scope`, sale `status`, dispatch `kind`, line `status`, `qty_resolved`, operation `metadata`, audit `self_approved`. `bin_label` is nullable with no default (the contract allows null). |
 | N5 | The E9 balance-write trigger and the sale-total-equals-sum-of-lines check are not built in B2.1: both need the stock and sale services (B4.3, B6.1) to exist, and the architecture test covers E9 meanwhile. They are built with those steps. | ERD s3.7, s11.2 E9 |
 | N6 | Seed rows in migrations: the four roles and the three payment methods (cash, mobile money, card). Brands and sub-types (E20) have no list in the requirements, so they are seeded by B2.5 with the sample items. | ERD s3.2, s3.7, E20 |

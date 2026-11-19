@@ -1,14 +1,14 @@
 """Append-only guards for the stock ledger and the audit log (ERD s7).
 
-Layers 1 and 2 (model and queryset) live here; layer 3 (database triggers that reject
-UPDATE, DELETE and TRUNCATE for every role) is built by :func:`append_only_operations` and
-used in the migrations of ``stock_ledger`` and ``audit``.
+Layers 1 and 2 (model and queryset) live here. Layer 3 (database triggers that reject
+UPDATE, DELETE and TRUNCATE for every role) is plain SQL written out in the migrations
+``stock_ledger/0002`` and ``audit/0002``; they do not import this module, so changing it can
+never alter what a historical migration does.
 """
 
 from typing import Any, NoReturn
 
-from django.db import migrations, models
-from django.db.migrations.operations.base import Operation
+from django.db import models
 
 
 class AppendOnlyError(Exception):
@@ -52,32 +52,3 @@ class AppendOnlyModel(models.Model):
 
     def delete(self, *args: Any, **kwargs: Any) -> NoReturn:
         _refuse("delete()")
-
-
-FUNCTION_SQL = """
-CREATE OR REPLACE FUNCTION eqp4l_reject_change() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    RAISE EXCEPTION '% on % is not allowed: the table is append-only', TG_OP, TG_TABLE_NAME
-        USING ERRCODE = 'restrict_violation';
-END;
-$$;
-"""
-DROP_FUNCTION_SQL = "DROP FUNCTION IF EXISTS eqp4l_reject_change();"
-
-
-def append_only_operations(table: str) -> list[Operation]:
-    """Migration operations adding the UPDATE/DELETE and TRUNCATE guard triggers (layer 3)."""
-    return [
-        migrations.RunSQL(
-            sql=[
-                f"CREATE TRIGGER {table}_no_change BEFORE UPDATE OR DELETE ON {table} "
-                "FOR EACH ROW EXECUTE FUNCTION eqp4l_reject_change();",
-                f"CREATE TRIGGER {table}_no_truncate BEFORE TRUNCATE ON {table} "
-                "FOR EACH STATEMENT EXECUTE FUNCTION eqp4l_reject_change();",
-            ],
-            reverse_sql=[
-                f"DROP TRIGGER {table}_no_truncate ON {table};",
-                f"DROP TRIGGER {table}_no_change ON {table};",
-            ],
-        )
-    ]

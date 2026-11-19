@@ -24,7 +24,7 @@ class AuditEvent(AppendOnlyModel):
     reference_id = models.BigIntegerField(null=True, blank=True)
     previous_value = models.JSONField(null=True, blank=True)
     new_value = models.JSONField(null=True, blank=True)
-    self_approved = models.BooleanField(default=False)
+    self_approved = models.BooleanField(default=False, db_default=False)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=300, blank=True, default="")
     request_id = models.UUIDField(null=True, blank=True)

@@ -81,14 +81,16 @@ class Item(AuditFields):
     mpn = models.CharField(max_length=100)
     description = models.TextField(blank=True, default="")
     condition = models.CharField(max_length=12, choices=Condition.choices)
-    uom = models.CharField(max_length=20, default="piece")
-    specs = models.JSONField(default=dict)
+    uom = models.CharField(max_length=20, default="piece", db_default="piece")
+    specs = models.JSONField(default=dict, db_default={})
     image_path = models.CharField(max_length=255, blank=True, default="")
     image_content_type = models.CharField(max_length=100, blank=True, default="")
     image_bytes = models.PositiveIntegerField(null=True, blank=True)
-    show_on_website = models.BooleanField(default=False)
+    show_on_website = models.BooleanField(default=False, db_default=False)
     search_keywords = models.TextField(blank=True, default="")
-    status = models.CharField(max_length=12, choices=ItemStatus.choices, default=ItemStatus.DRAFT)
+    status = models.CharField(
+        max_length=12, choices=ItemStatus.choices, default=ItemStatus.DRAFT, db_default="draft"
+    )
 
     class Meta:
         indexes = [
@@ -128,11 +130,11 @@ class StockBalance(models.Model):
     location = models.ForeignKey(
         "branches.Branch", on_delete=models.PROTECT, related_name="balances"
     )
-    on_hand = models.DecimalField(max_digits=12, decimal_places=3, default=0)
-    reserved = models.DecimalField(max_digits=12, decimal_places=3, default=0)
-    quarantined = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    on_hand = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_default=0)
+    reserved = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_default=0)
+    quarantined = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_default=0)
     reorder_level = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
-    bin_label = models.CharField(max_length=50, blank=True, default="")
+    bin_label = models.CharField(max_length=50, null=True, blank=True)  # noqa: DJ001 - contract: null
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -172,7 +174,9 @@ class Price(AuditFields):
     """The price list: one current central row per SKU (OQ-19, ERD s5)."""
 
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="prices")
-    scope = models.CharField(max_length=10, choices=PriceScope.choices, default=PriceScope.CENTRAL)
+    scope = models.CharField(
+        max_length=10, choices=PriceScope.choices, default=PriceScope.CENTRAL, db_default="central"
+    )
     branch = models.ForeignKey(
         "branches.Branch", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
