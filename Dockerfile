@@ -23,6 +23,10 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY manage.py ./
 COPY eqp4l ./eqp4l
+# Entrypoint: waits for the db, migrates, optional seed (FIX-1). sed strips any CR so a
+# CRLF checkout on Windows still runs; .gitattributes also keeps it LF.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && chmod 0755 /usr/local/bin/entrypoint.sh
 # Collect static files for WhiteNoise. The values are build-time dummies only (never
 # secrets); real values come from the environment at run time.
 RUN DJANGO_SECRET_KEY=build-only-not-a-secret DATABASE_URL=postgres://u:p@localhost/db \
@@ -33,4 +37,5 @@ RUN DJANGO_SECRET_KEY=build-only-not-a-secret DATABASE_URL=postgres://u:p@localh
 # and the gunicorn control-socket directory are writable by app.
 USER app
 EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["gunicorn", "eqp4l.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]

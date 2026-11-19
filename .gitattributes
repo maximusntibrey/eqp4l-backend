@@ -2,6 +2,16 @@
 # (the machine-wide Git for Windows config sets core.autocrlf=true).
 * text=auto eol=lf
 
+# Explicit LF for anything executed in Linux containers or CI (a CRLF shebang or Docker
+# instruction breaks there). Redundant with the rule above on purpose: the test in
+# tests/test_local_run.py fails if these lines are removed. Also keep dev.sh LF.
+*.sh text eol=lf
+*.py text eol=lf
+Dockerfile text eol=lf
+docker/entrypoint.sh text eol=lf
+compose.yaml text eol=lf
+.env.example text eol=lf
+
 # Windows-only scripts keep CRLF
 *.bat text eol=crlf
 *.cmd text eol=crlf

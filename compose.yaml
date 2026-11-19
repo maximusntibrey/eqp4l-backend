@@ -1,7 +1,8 @@
-# Local environment (O1.2): Django app + PostgreSQL. Not for staging or production.
-#   cp .env.example .env   (then edit the values)
-#   docker compose up -d --build
-# Variables come from the git-ignored .env (see .env.example). Nothing secret is here.
+# Local environment (O1.2, FIX-1): Django app + PostgreSQL. Not for staging or production.
+#   docker compose up -d --build        (works from a fresh clone, no .env needed)
+#   copy .env.example .env              (optional: to change values; dev.ps1 does it)
+# Values come from the git-ignored .env when present (see .env.example); otherwise the
+# LOCAL-ONLY defaults below apply. They are dummies, never used outside this machine.
 name: eqp4l
 
 services:
@@ -9,12 +10,12 @@ services:
     # Same image and digest as the CI service (ci.yml), PostgreSQL 18.7.
     image: postgres:18.7-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
-      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-eqp4l}
+      POSTGRES_USER: ${POSTGRES_USER:-eqp4l}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     ports:
       # Bound to loopback only; never published on other interfaces.
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - eqp4l_pgdata:/var/lib/postgresql
     healthcheck:
@@ -26,14 +27,23 @@ services:
 
   app:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
+      # Local-only defaults so `docker compose up` works without a .env. Real secrets
+      # never live here; staging and production take theirs from the host's secret store.
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-insecure-key-do-not-use-elsewhere}
+      DJANGO_LOCAL: ${DJANGO_LOCAL:-true}
+      DJANGO_SEED_DEV: ${DJANGO_SEED_DEV:-0}
+      # Local only: apply migrations on start (the image default is 0).
+      DJANGO_MIGRATE_ON_START: ${DJANGO_MIGRATE_ON_START:-1}
       # Inside the Compose network the database host is the service name "db" on 5432.
       # The password must be URL-safe (letters and digits) for this URL.
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://${POSTGRES_USER:-eqp4l}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-eqp4l}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +61,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 40s
     restart: unless-stopped
 
 volumes:
