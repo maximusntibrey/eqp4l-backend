@@ -85,8 +85,10 @@ if [[ "$before" != "$after" ]]; then
 fi
 
 # The restore script must refuse to overwrite a non-empty database without --force.
-if bash "$here/restore.sh" "$dump" "$dst" >/dev/null 2>&1; then
-  echo "restore-test: FAILED, restore.sh overwrote a non-empty database without --force" >&2
+rc=0
+bash "$here/restore.sh" "$dump" "$dst" >/dev/null 2>&1 || rc=$?
+if [[ "$rc" -ne 3 ]]; then
+  echo "restore-test: FAILED, restore.sh exit code was $rc, expected 3 (refusal of a non-empty database without --force)" >&2
   exit 1
 fi
 echo "restore-test: restore.sh refused the non-empty target as expected"

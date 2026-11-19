@@ -32,9 +32,19 @@ if [[ "$exists" != "1" ]]; then
   echo "CREATE DATABASE \"$target\"" | pg_psql postgres
   echo "restore: created database '$target'" >&2
 else
-  tables="$(echo "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')" | pg_psql "$target")"
+  # Any user-created object counts: tables, views, sequences, indexes, types (pg_class),
+  # functions (pg_proc) and extra schemas (pg_namespace), excluding system schemas.
+  tables="$(pg_psql "$target" <<'SQL'
+SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%')
+     + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname NOT IN ('pg_catalog', 'information_schema'))
+     + (SELECT count(*) FROM pg_namespace
+         WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'public') AND nspname NOT LIKE 'pg_%');
+SQL
+)"
   if [[ "$tables" != "0" && "$force" != "--force" ]]; then
-    echo "error: database '$target' already has $tables table(s); refusing to overwrite. Use a new database name or pass --force." >&2
+    echo "error: database '$target' already has $tables object(s); refusing to overwrite. Use a new database name or pass --force." >&2
     exit 3
   fi
 fi
