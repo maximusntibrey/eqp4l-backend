@@ -22,7 +22,7 @@ In scope (B1.x to B8.x): login and sessions, working-branch selection, branch an
 
 Out of scope here (Sprint 3 and later; no rows in the matrix): full specification fields, warranty, product/variant split, several images, branch-to-branch transfers, adjustments and approvals, notifications, branch access requests, multi-role assignment and role switching, price history and below-cost warning, price lists with branch overrides, discounts, receipts, customer details, split payments, daily close, refunds, reports, exports, website API, supplier records, inspection and grading, barcodes, per-piece tracking (BE s14; OVR s4; digest s6).
 
-Not in the TASKS B steps, so not in the matrix and not designed: changing one's own password, forgotten-password self-service, session listing. Add a row (with approval) if wanted.
+Not in the TASKS B steps, so not in the matrix and not designed: forgotten-password self-service, session listing. (Changing one's own password was added by owner decision 2026-11-19, OQ-23: row 56.) Add a row (with approval) if wanted.
 
 ## 2. Roles
 
@@ -84,7 +84,7 @@ Any permission can be granted to any user by a Super Admin (P16 answered: OVR s1
 
 ## 8. The permission matrix (Sprints 1-2)
 
-55 rows. Columns: SA Super Admin, WA Warehouse Admin, BA Branch Admin, FS Front Staff. Every item is decided in section 10.
+57 rows (rows 56 and 57 added by owner decision 2026-11-19, OQ-23). Columns: SA Super Admin, WA Warehouse Admin, BA Branch Admin, FS Front Staff. Every item is decided in section 10.
 
 How to read a cell:
 - **Allow**: allowed, no extra condition beyond the global preconditions below.
@@ -170,6 +170,8 @@ Global preconditions for every row except `auth.login`: authenticated session (e
 | 53 | `ledger.modify` | B4.3 | Update or delete a stock ledger row (no path exists) | Deny | Deny | Deny | Deny | BE s9; SKILLS Database Standards | Includes Super Admin. Tested at model, queryset and database level. |
 | 54 | `audit.modify` | B4.3 | Update or delete an audit row (no path exists) | Deny | Deny | Deny | Deny | BE s9; SKILLS Database Standards | Includes Super Admin. |
 | 55 | `stock.edit_balance_directly` | B4.3 | Edit a stock balance outside the stock service (no path exists) | Deny | Deny | Deny | Deny | BE s3.11, s11; TASKS B4.3 | Corrections are service-made movements only. |
+| 56 | `auth.change_password` | B2.3 | Change own password (current password required; also lifts the one-time-password block) | Allow | Allow | Allow | Allow | Owner decision 2026-11-19 (OQ-23) | Own account only. Until a one-time password is changed, every other endpoint except logout and `auth.me` is refused with 403 `password_change_required`. Audited (`user.password_changed`). |
+| 57 | `stock.set_reorder_level` | B4.4 | Set or clear the reorder level of an item at a location | Allow | If `own_location` | Deny | Deny | Owner decision 2026-11-19 (OQ-23) | SA for any location, WA for the warehouse. Also settable per row in the CSV opening-stock import (`import.commit`). Audited. |
 
 ### 8.2 Machine-readable matrix (source for the permission tests)
 
@@ -507,6 +509,18 @@ actions:
     step: "B4.3"
     SA: deny
     WA: deny
+    BA: deny
+    FS: deny
+  - id: auth.change_password
+    step: "B2.3"
+    SA: allow
+    WA: allow
+    BA: allow
+    FS: allow
+  - id: stock.set_reorder_level
+    step: "B4.4"
+    SA: allow
+    WA: {allow_if: [own_location]}
     BA: deny
     FS: deny
 ```
