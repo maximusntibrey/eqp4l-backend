@@ -270,7 +270,7 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [ ] B1.0 Tooling setup and verification (section 2.2 and 2.3), recorded in `SKILLS.md`
 - [x] B1.1 Scope and permission table for owner approval (4 roles: SuperAdmin, Warehouse Admin, Branch Admin, Front Staff; per-person permissions: Receive stock, Manage prices, discount; branch rules; self-approval rules; shortfall resolution by admin roles only)
 - [x] B1.2 Data model: users, roles, branches, items, stock balances, stock movements, dispatches, sales (ERD written and approved by the owner before any migration, see `SKILLS.md` Database Standards; stock buckets and movements per Specification section 11.2; ledger rows carry a stable source reference and line ID so per-unit tracking can be added later, no unit tables now)
-- [ ] B1.3 Endpoint list as the API contract (OpenAPI), published first for the frontend
+- [x] B1.3 Endpoint list as the API contract (OpenAPI), published first for the frontend
 - [x] B1.4 Short requirements digest in the repo
 - [ ] B1.8 Repo, environments, CI and the one check command
 - [ ] B2.1 Schema and migrations (accounts, roles, branches, inventory, stock, ledger, audit)

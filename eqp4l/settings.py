@@ -139,8 +139,8 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory & Warehouse API",
-    # The contract version is set when the contract is published (B1.3).
-    "VERSION": "0.0.0",
+    # Same version as openapi/openapi.yaml, the hand-authored contract (B1.3).
+    "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
