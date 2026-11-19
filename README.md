@@ -14,7 +14,7 @@ Precedence: `1-Overview-and-Sprints`, `2-Frontend-Requirements`, `3-Backend-Requ
 
 ## Status
 
-Sprint 1, tooling (B1.0). The stack is Python 3.13, Django 5.2 LTS, Django REST Framework and PostgreSQL (TASKS section 2.3). The Django project package is `eqp4l/`. There are no project apps, models or migrations yet: they wait for the owner's approval of the B1.2 ERD.
+Sprint 1, tooling (B1.0). The stack is Python 3.13, Django 5.2 LTS, Django REST Framework and PostgreSQL (TASKS section 2.3). The Django project package is `eqp4l/`. The schema (B2.1, `docs/ERD.md`) and the custom user model with its login ID generator (B2.2) exist as migrations in `accounts`, `roles`, `branches`, `inventory`, `warehouse`, `transfers`, `sales`, `stock_ledger` and `audit`; the services and endpoints come with later steps.
 
 ## Local setup
 
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File scripts\dev.ps1
 - PostgreSQL for tools: `127.0.0.1:5433` (user, password and database from `.env`).
 - Dev logins: they arrive with B2.5 (`seed_dev`), together with the user model (B2.2) and login (B2.3). Their passwords will come from `DEV_SEED_PASSWORD_*` in your own git-ignored `.env`. There is no login to try before then.
 - Frontend: run the Vite dev server on http://localhost:5173 with a proxy so the browser sees one origin (no CORS needed): `server: { proxy: { '/api': 'http://127.0.0.1:8000', '/health': 'http://127.0.0.1:8000' } }`. Django already trusts `http://localhost:5173` and `http://127.0.0.1:5173` for CSRF and allows non-HTTPS cookies in local mode (`DJANGO_LOCAL=true`); production refuses insecure cookies.
-- Reset the local database (deletes all local data): `docker compose down -v`, then run `scripts\dev.ps1` again. Do this after pulling B2.2 (the custom user model): migrations applied before it cannot be switched to the new user table.
+- Reset the local database (deletes all local data): `docker compose down -v`, then run `scripts\dev.ps1` again. Do this after pulling B2.1/B2.2 if your local database was created earlier: it was migrated with Django's default user table, and Django cannot switch an existing database to the custom user model (`accounts.User`), so start from an empty one.
 - Stop, keep the data: `docker compose down`. Logs: `docker compose logs -f app`.
 
 Common errors:

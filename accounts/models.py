@@ -1,9 +1,12 @@
-"""The custom user model (ERD s3.1). ``AUTH_USER_MODEL = "accounts.User"``."""
+"""The custom user model (B2.2, ERD s3.1). ``AUTH_USER_MODEL = "accounts.User"``."""
+
+from typing import Any, NoReturn
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.db.models import Q
 
+from accounts.ids import next_login_id
 from eqp4l.db import AuditFields
 
 
@@ -15,7 +18,34 @@ class UserStatus(models.TextChoices):
 
 
 class UserManager(BaseUserManager["User"]):
-    """Users are created through ``create_user`` from B2.2 (login ID generator)."""
+    def create_user(
+        self,
+        *,
+        full_name: str,
+        phone: str,
+        password: str | None,
+        super_admin: bool = False,
+        email: str | None = None,
+        status: str = UserStatus.ACTIVE,
+        **extra: Any,
+    ) -> "User":
+        """Create a user with a freshly generated, immutable login ID.
+
+        Rule: the ID prefix (``SA`` or ``USR``) is fixed here by the user's first role and
+        never changes (ERD s3.1, E8). The audit event ``user.created`` is written by the
+        user-management service (B2.4), not here.
+        """
+        user = self.model(
+            login_id=next_login_id(super_admin=super_admin),
+            full_name=full_name,
+            phone=phone,
+            email=email,
+            status=status,
+            **extra,
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
 
 
 class User(AuditFields, AbstractBaseUser):
@@ -56,3 +86,23 @@ class User(AuditFields, AbstractBaseUser):
     def is_active(self) -> bool:  # type: ignore[override]
         """Only ``active`` users can log in (BE s2)."""
         return bool(self.status == UserStatus.ACTIVE)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # The ID as loaded (or first given), so a later change is caught in save().
+        self._loaded_login_id: str | None = self.__dict__.get("login_id")
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Refuse a missing or changed login ID (the database trigger also rejects a change)."""
+        if self._state.adding:
+            if not self.login_id:
+                raise ValueError(
+                    "A user needs a login_id; create users with User.objects.create_user()."
+                )
+        elif getattr(self, "_loaded_login_id", self.login_id) != self.login_id:
+            raise ValueError("login_id is immutable and cannot be changed.")
+        super().save(*args, **kwargs)
+        self._loaded_login_id = self.login_id
+
+    def delete(self, *args: Any, **kwargs: Any) -> NoReturn:
+        raise ValueError("Users are never deleted; deactivate them instead (ERD s2).")

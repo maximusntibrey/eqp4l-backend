@@ -43,7 +43,10 @@ def rejected(error: type[DatabaseError] = IntegrityError) -> Iterator[None]:
 @pytest.mark.parametrize("login_id", ["", "ABC-0001", "SA-1", "USR-12", "usr-0001", "SA-00A1"])
 def test_user_login_id_format_is_enforced(login_id: str) -> None:
     with rejected():
-        User.objects.create(login_id=login_id, full_name="A", phone="1", status="active")
+        # bulk_create skips User.save(), so the database check is what refuses it.
+        User.objects.bulk_create(
+            [User(login_id=login_id, full_name="A", phone="1", status="active")]
+        )
 
 
 @pytest.mark.parametrize("login_id", ["SA-0001", "USR-0001", "USR-12345"])
