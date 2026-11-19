@@ -1,6 +1,6 @@
 # Requirements digest (B1.4)
 
-A short summary of the backend requirements for Sprints 1 and 2. It adds, infers and resolves nothing. Where sources disagree, the point is under "Conflicts noticed". Sources are cited as: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (background only, not read for this digest). All live in the `inventory/` folder outside this repo. If this digest and a source differ, the source wins (GAP-C04).
+A short summary of the backend requirements for Sprints 1 and 2. It adds, infers and resolves nothing. Where sources disagree, the point is under "Conflicts noticed". Sources are cited as: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (background; s11.1-11.3 are binding for stock rules per GAP-C07). All live in the `inventory/` folder outside this repo. If this digest and a source differ, the source wins (GAP-C04).
 
 ## 1. Roles and scope
 
@@ -24,7 +24,7 @@ A short summary of the backend requirements for Sprints 1 and 2. It adds, infers
 
 - Stock is a quantity per SKU per location. No per-piece tracking now. (BE s3.1; OVR s1 #5)
 - Per SKU and location: on hand, reserved, in transit, quarantined or damaged, and available (available = on hand minus reserved). (BE s3.8)
-- Movements follow SPEC s11.2 (GAP-C07): a dispatch moves quantity from available to reserved at the sender and marks it in transit; receipt clears the reservation and credits the destination's on hand with the approved quantity only. Storage detail is decided in the ERD (B1.2). (BE s3.8; GAP-C07)
+- Movements follow SPEC s11.1-11.3 (binding per GAP-C07). SPEC s11.1 defines only on hand, reserved and available (available = on hand minus reserved). SPEC s11.2 has no quarantined/damaged bucket and no separate in-transit bucket: dispatch decreases available and increases reserved at the sender, and approval resolves the "in-transit quantity" and raises the destination's on hand by the accepted quantity. The five-bucket list above (including in transit and quarantined or damaged) comes from BE s3.8 only. Storage detail is decided in the ERD (B1.2). (SPEC s11.1-11.3; BE s3.8; GAP-C07)
 - The stock ledger is append-only. Each row references its source transaction and carries location, item, quantity, user and time, plus a stable source reference and line ID so a unit reference can be added later. (BE s9, s14; GAP-C02)
 - Balances cannot go negative. Receipts are never silently edited; corrections use a reversal or adjustment. Duplicate submissions are prevented; balances and ledger entries commit together. (BE s3.12, s4)
 - Every stock change uses database transactions, row-level locking and idempotency keys. (BE s11)
@@ -36,13 +36,13 @@ A short summary of the backend requirements for Sprints 1 and 2. It adds, infers
 - Sprint 2: sale API (blocks overselling) and branch sales list, find and search including other branches' quantities, CSV import with error report, cancel sale (Super Admin and Branch Admin, reason required, reversal entry) (Day 6); dashboard and activity endpoints, basic dispatch shortfall resolution (return to sender, confirm loss, record damage) with a mandatory note (Day 7); end-to-end, permission and isolation tests (Day 8); performance, security, backup and restore checks (Day 9); production deployment after owner go-ahead, `v1.0.0` (Day 10). (BE s12; OVR s4)
 - Receiving: the destination enters the quantity that arrived and approves in full, approves partially with a note, or rejects with a reason. Only approved quantities are credited. The sender cannot approve receipt. A shortfall stays linked to the dispatch as a discrepancy. (BE s5 steps 4-6, s13)
 - Discrepancy resolution: any admin role (not Front Staff), within the branches it may act in. (BE s5; OVR s1 #13; GAP-C08)
-- Sales: price from the price list, stock deducted, sale record, ledger entry and audit event succeed or fail together. Completed sales are never edited; statuses are Completed, Cancelled, Refunded, Exchanged. (BE s6; OVR s1 #14; GAP-H05)
+- Sales: price from the price list (see conflict 2), stock deducted, sale record, ledger entry and audit event succeed or fail together. Completed sales are never edited; statuses are Completed, Cancelled, Refunded, Exchanged. (BE s6; OVR s1 #14; GAP-H05)
 - Items: created Draft, then Active; only Active can be received, assigned or sold. Items with history are Discontinued, not deleted. (BE s3.9)
 - MVP acceptance criteria are in BE s13 "MVP".
 
 ## 5. Non-functional rules
 
-- Money: GHS. (BE s3.2) Decimal at 2 dp is a project rule from the agent brief, not stated in these sources.
+- Money: fixed-point decimal in GHS, two decimal places, never floating point. (BE s3.2; SKILLS.md Database Standards, line 97)
 - Time: timezone-aware timestamps, Africa/Accra. (BE s11)
 - Audit: append-only, no application role can edit or delete. Each event records user ID, role and workspace, active branch, action, reference, previous and new values, timestamp, IP or device. (BE s9)
 - Permissions are enforced server-side, not by the screens. (BE s2, s11; OVR s3)
@@ -53,14 +53,14 @@ A short summary of the backend requirements for Sprints 1 and 2. It adds, infers
 
 ## 6. Out of scope for Sprints 1-2
 
-Barcodes, labels, scanning, per-piece records, POS, label printers, bundles, stocktake, email and SMS, offline mode (BE s14; OVR s1 #4). Not before Sprint 3: full specification fields, warranty, product/variant split, several images (OVR s4; GAP-H03, H04). Not before Sprint 4: branch-to-branch transfers, adjustments, notifications. Not before Sprint 5: access requests, multi-role, price history. Not before Sprint 6: price lists, discounts, receipts, customer details. Later: split payments, daily close, refunds, reports, exports, website API, supplier records, inspection and grading. Lead capture and AI agent are unscheduled. (OVR s4; BE s10, s12)
+Barcodes, labels, scanning, per-piece records, serial numbers / per-piece tracking, repair tracking, POS, label printers, bundles, stocktake, email and SMS, offline mode (BE s14; OVR s1 #4). Not before Sprint 3: full specification fields, warranty, product/variant split, several images (OVR s4; GAP-H03, H04). Not before Sprint 4: branch-to-branch transfers, adjustments, notifications. Not before Sprint 5: access requests, multi-role, price history. Not before Sprint 6: price lists, discounts, receipts, customer details. Later: split payments, daily close, refunds, reports, exports, website API, supplier records, inspection and grading. Lead capture and AI agent are unscheduled. (OVR s4; BE s10, s12)
 
 ## 7. Conflicts noticed (not resolved here)
 
-1. **Who may dispatch.** BE s2 says warehouse-to-branch assignment is "Warehouse Admin (and Super Admin)". BE s5 and Sprint 1 Day 5 say "Warehouse Admin only". (BE s2 vs BE s5, s12)
-2. **Stock states.** BE s3.8 lists on hand, reserved, in transit, quarantined or damaged and available. BE s4 lists "available, reserved, in transit, quarantined or damaged" (no on hand). It is also unclear in BE s3.8 versus s5 step 2 whether in transit is a separate bucket or a label on reserved stock. SPEC s11.2 was not consulted. (BE s3.8 vs s4, s5)
-3. **Source of the selling price in the MVP.** BE s3.2 and s3.7 say price comes from the price list; BE Sprint 2 Day 6 says "price from the item"; the price list is Sprint 6 (BE Day 26). GAP-M08 only recommends a one-row-per-SKU price table and is not decided. (BE s3.2/s3.7 vs s12; GAP-M08)
-4. **Permission matrix approval.** The decision log says the matrix is "approved on Sprint 1 Day 1" (GAP-C06; OVR s1 #15), while BE Sprint 1 Day 1 lists it "for owner approval" and B1.1 is still an open approval gate in the task list. (GAP-C06/OVR #15 vs BE s12 and `TASKS.md` B1.1)
+1. **Stock buckets and the unaccepted remainder.** BE s3.8 lists on hand, reserved, in transit, quarantined or damaged and available (BE s4 omits on hand); SPEC s11.1-11.2 define no quarantined/damaged or separate in-transit bucket. Also, SPEC s11.3 says "do not release reserved stock back to the sender until the discrepancy or return outcome is resolved" and to "record dispatched, received, accepted and rejected quantities separately", while BE s3.8 says "receipt clears the reservation" and is silent on the unaccepted remainder. Unresolved. (BE s3.8, s4 vs SPEC s11.1-11.3)
+2. **Source of the selling price in the MVP.** BE s3.2 and s3.7 say price comes from the price list; BE Sprint 2 Day 6 says "price from the item"; the price list is Sprint 6 (BE Day 26). GAP-M08 only recommends a one-row-per-SKU price table and is not decided. (BE s3.2/s3.7 vs s12; GAP-M08)
+
+Wording differences (no conflict): BE s2 says warehouse-to-branch assignment is "Warehouse Admin (and Super Admin)" while BE s5 and Day 5 say "Warehouse Admin only"; these reconcile through Super Admin powers (BE s2) and "can do everything any user can do, in every branch" (OVR s1 #2).
 
 The owner's own list C1-C8 is not available to this digest and is not reproduced; it may overlap with the above.
 
