@@ -5,7 +5,7 @@ read with django-environ (TASKS 0.3, 0.6). Locally they come from a git-ignored 
 file (copy ``.env.example``); on staging and production they come from the host's secret
 store. There are no secret defaults in this file.
 
-Scope (step B1.0, tooling only): no project apps, no models and no migrations yet.
+Project apps and the AUTH_USER_MODEL arrive with B2.1 / B2.2.
 """
 
 from pathlib import Path
@@ -41,9 +41,20 @@ INSTALLED_APPS = [
     "django_filters",
     "rest_framework",
     "drf_spectacular",
-    # Project apps (accounts, roles, branches, inventory, ...) are added from B2.1,
-    # after the owner approves the B1.2 ERD (SKILLS.md Database Standards).
+    # Project apps (B2.1, built exactly to the approved docs/ERD.md).
+    "accounts",
+    "roles",
+    "branches",
+    "inventory",
+    "warehouse",
+    "transfers",
+    "sales",
+    "stock_ledger",
+    "audit",
 ]
+
+# ERD s2: bigint identity primary keys.
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -81,10 +92,8 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 
 # --- Users and passwords ----------------------------------------------------------------
 
-# AUTH_USER_MODEL is deliberately NOT set yet. The custom user model (login IDs SA-0001 /
-# USR-0001) is created in B2.2 from the first project migration, only after the owner
-# approves the B1.2 ERD (TASKS B1.2, SKILLS.md Coding and Database Standards).
-# Do not run `migrate` against a shared database before then.
+# Custom user model from the first migration (login IDs SA-0001 / USR-0001, ERD s3.1).
+AUTH_USER_MODEL = "accounts.User"
 
 # T.9: Argon2 first (SKILLS.md Security Standards); PBKDF2 kept only to verify old hashes.
 PASSWORD_HASHERS = [
