@@ -94,7 +94,7 @@ def test_entrypoint_is_executable_in_git() -> None:
     git = shutil.which("git")
     if git is None or not (ROOT / ".git").exists():
         pytest.skip("git checkout not available")
-    out = subprocess.run(  # noqa: S603
+    out = subprocess.run(  # noqa: S603  # nosec B603
         [git, "ls-files", "-s", "docker/entrypoint.sh", "scripts/dev.sh"],
         cwd=ROOT,
         capture_output=True,

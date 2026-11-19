@@ -12,7 +12,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eqp4l}
       POSTGRES_USER: ${POSTGRES_USER:-eqp4l}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     ports:
       # Bound to loopback only; never published on other interfaces.
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
@@ -38,7 +38,7 @@ services:
       DJANGO_SEED_DEV: ${DJANGO_SEED_DEV:-0}
       # Inside the Compose network the database host is the service name "db" on 5432.
       # The password must be URL-safe (letters and digits) for this URL.
-      DATABASE_URL: postgres://${POSTGRES_USER:-eqp4l}:${POSTGRES_PASSWORD:-local-dev-password}@db:5432/${POSTGRES_DB:-eqp4l}
+      DATABASE_URL: postgres://${POSTGRES_USER:-eqp4l}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-eqp4l}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"
