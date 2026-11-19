@@ -325,7 +325,7 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 ### DevOps, Sprint 1
 
 - [ ] O1.1 Owner chooses the hosting provider, database host, object storage and domain names (record in `RUNBOOK.md` and remove from Open questions)
-- [ ] O1.2 Local environment: Dockerfile and Docker Compose for the backend and PostgreSQL; `.env.example` for both repos
+- [x] O1.2 Local environment: Dockerfile and Docker Compose for the backend and PostgreSQL; `.env.example` for both repos
 - [x] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service
 - [ ] O1.4 Frontend CI pipeline (3.3)
 - [ ] O1.5 Staging environment created for backend and frontend, secrets stored in the host's secret store

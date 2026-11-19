@@ -49,3 +49,6 @@ node_modules/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Database backups (scripts/backup.sh); never commit dumps
+/backups/
