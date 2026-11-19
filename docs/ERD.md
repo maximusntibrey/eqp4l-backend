@@ -58,6 +58,7 @@ Legend: PK primary key, FK foreign key, UQ unique, NN not null, CK check.
 | permanent_branch | FK `branches_branch` null | Null for Super Admins (system-wide) and Front Staff (pick at login). Warehouse Admin: the warehouse. Branch Admin: their branch. Service rule: required for WA and BA. |
 | last_login | timestamptz null | |
 | deactivated_at | timestamptz null | History is kept (BE s2). |
+| must_change_password | boolean NN default false | OQ-23 C5. Set by the service when a Super Admin creates or resets the user (a one-time password is issued); while true every endpoint except change-password, logout and me answers 403 `password_change_required`; cleared when the user changes their password. Contract field `Me.must_change_password`. |
 | audit fields | | `created_by` self-FK null (first user, `SA-0001`, is seeded). |
 
 ID generator (B2.2): two PostgreSQL sequences, `accounts_sa_seq` and `accounts_usr_seq`, created in the first migration. `login_id` = prefix + `nextval` zero-padded to 4 digits (5+ digits after 9999). Sequences are non-transactional, so a rolled-back creation burns a number but can never reuse one. The prefix is fixed at creation by the user's first role; later role changes never change the ID (E8).
@@ -498,6 +499,7 @@ erDiagram
         varchar login_id UK "SA-0001 or USR-0001, immutable"
         varchar status
         bigint permanent_branch FK
+        boolean must_change_password
     }
     roles_role {
         bigint id PK
@@ -538,6 +540,8 @@ erDiagram
         numeric on_hand "CK >= 0"
         numeric reserved "CK >= 0 and <= on_hand"
         numeric quarantined "CK >= 0"
+        numeric reorder_level "null, CK >= 0"
+        varchar bin_label "warehouse only, optional"
     }
     stock_ledger_operation {
         bigint id PK
@@ -663,3 +667,16 @@ Citations were checked against the inventory files (`file:line`).
 | E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Accepted: yes, several resolutions per discrepancy; line `resolved_mixed` when outcomes differ. |
 | E10 | Required identity fields on a user beyond name (SPEC s2.1). | `full_name` and `phone` required; `email` optional. |
 | E12 | Quantity type (BE s3.12:218, SKILLS:98). | `numeric(12,3)` for every quantity. |
+
+### 11.5 Build notes (B2.1, 2026-11-19)
+
+Changes and choices made when the schema was built. None changes a rule in sections 1 to 10.
+
+| Ref | Note | Source |
+|---|---|---|
+| N1 | `accounts_user.must_change_password` added (section 3.1). | OQ-23 C5; contract 0.2.0 `Me` |
+| N2 | `inventory_stockbalance.reorder_level` and `bin_label` were already in section 3.4 and are built as written; both are in the mermaid diagram now. | OQ-23 C13; contract `StockBalance` |
+| N3 | `created_by` / `updated_by` are nullable on every table that has audit fields, so rows made by a data migration or the seed (no signed-in actor) are possible. The services always set them. | ERD s3.1 (first user is seeded) |
+| N4 | Trigram search indexes (`pg_trgm`, GIN) are on the plain columns `name`, `model_name` and `sku`; they also serve case-insensitive `ILIKE`. | ERD s3.4 ("trigram or lower() index") |
+| N5 | The E9 balance-write trigger and the sale-total-equals-sum-of-lines check are not built in B2.1: both need the stock and sale services (B4.3, B6.1) to exist, and the architecture test covers E9 meanwhile. They are built with those steps. | ERD s3.7, s11.2 E9 |
+| N6 | Seed rows in migrations: the four roles and the three payment methods (cash, mobile money, card). Brands and sub-types (E20) have no list in the requirements, so they are seeded by B2.5 with the sample items. | ERD s3.2, s3.7, E20 |

@@ -29,7 +29,13 @@ select = [
   "RUF",      # ruff-specific
 ]
 
+# RUF012 flags the Django idioms `class Meta`, `dependencies` and `operations` lists.
+# DJ008: models are not shown in the Django admin (no admin site in this API-only project).
+ignore = ["RUF012", "DJ008"]
+
 [tool.ruff.lint.per-file-ignores]
+# Generated migrations: long lines are not ours to wrap.
+"**/migrations/*.py" = ["E501"]
 "tests/**" = ["S101"]
 "**/tests/**" = ["S101"]
 "**/test_*.py" = ["S101"]
@@ -45,6 +51,11 @@ untyped_calls_exclude = ["drf_spectacular"]
 
 [tool.django-stubs]
 django_settings_module = "eqp4l.settings"
+
+# factory-boy factories are untyped; tests reach them only through the typed make_* helpers.
+[[tool.mypy.overrides]]
+module = ["tests.factories"]
+ignore_errors = true
 
 # These ship no type information: Django REST Framework (its stub package is not in the
 # vetted list, TASKS 2.3, see TASKS Open questions) and django-environ (no stubs exist).
@@ -63,9 +74,8 @@ skips = ["*/tests/*", "*/test_*.py"]
 # --- pytest and coverage (T.11) ------------------------------------------------------
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "eqp4l.settings"
-# --no-migrations: until the B1.2 ERD is approved there are no project migrations, and the
-# test database is built from the models directly instead of running Django's migrations.
-addopts = "-ra --strict-markers --strict-config --no-migrations"
+# Tests run the real migrations (triggers, sequences and seed rows are part of the schema).
+addopts = "-ra --strict-markers --strict-config"
 python_files = ["test_*.py"]
 norecursedirs = [".venv", ".git", "staticfiles", "node_modules"]
 xfail_strict = true

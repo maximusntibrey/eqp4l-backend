@@ -273,7 +273,7 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [x] B1.3 Endpoint list as the API contract (OpenAPI), published first for the frontend
 - [x] B1.4 Short requirements digest in the repo
 - [ ] B1.8 Repo, environments, CI and the one check command
-- [ ] B2.1 Schema and migrations (accounts, roles, branches, inventory, stock, ledger, audit)
+- [x] B2.1 Schema and migrations (accounts, roles, branches, inventory, stock, ledger, audit)
 - [ ] B2.2 User model and ID generator (`SA-0001` for SuperAdmins, `USR-0001` for others; never changed, never reused)
 - [ ] B2.3 Login, logout, password hashing, secure sessions, rate limit and login log
 - [ ] B2.4 Permission checks by role and branch (only SuperAdmins can assign multiple roles)
