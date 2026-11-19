@@ -1,26 +1,26 @@
 # Data model and ERD (B1.2)
 
-**Status: DRAFT for owner approval (gate).** No model or migration is written until the owner approves this document (SKILLS Database Standards; TASKS B1.2). After approval, B2.1 builds exactly this; later changes are new migrations that cite a change to this document.
+**Status: APPROVED by the owner 2026-11-19.** Approved, so B2.1 may build exactly this (SKILLS Database Standards; TASKS B1.2). After approval, B2.1 builds exactly this; later changes are new migrations that cite a change to this document.
 
-Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (s11.2 binding for stock movements per GAP-C07), **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 (`TASKS.md` / `.claude/STATE.md`). Companion: `docs/PERMISSIONS.md` (B1.1). Decisions are in section 11; only the **OPEN-OWNER** items remain open (and **Pn** in the permission document).
+Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (s11.2 binding for stock movements per GAP-C07), **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 (`TASKS.md` / `.claude/STATE.md`). Companion: `docs/PERMISSIONS.md` (B1.1). Decisions are in section 11 (permission-side ones in the permission document); nothing remains open.
 
-## Owner decisions needed
+## Owner decisions (2026-11-19)
 
-One line each: question, then the recommendation. Detail in section 11.4. Permission-side items (P3, P9, P19, P20) are in `docs/PERMISSIONS.md`.
+The owner approved this document on 2026-11-19 and accepted every recommendation except where noted. Detail in section 11.4.
 
-- **E3** May a branch report more than was dispatched? Recommend: no; surplus via the Sprint 4 found-stock adjustment.
-- **E4** May one shortfall be resolved in parts? Recommend: yes.
-- **E10** Required user fields beyond name? Recommend: `full_name` required, phone and email optional.
-- **E12** Piece-only integer quantities or `numeric(12,3)`? Recommend: `numeric(12,3)` unless the owner confirms piece-only.
-- **E21** Dispatch header status precedence (SPEC s5.3 and s5.4)? Recommend: the ordered rule in section 11.4.
-- **P3, P9, P19, P20**: see the permission document.
+- **E3** No overage on receipt; surplus via the Sprint 4 found-stock adjustment.
+- **E4** Split resolutions of one shortfall are allowed.
+- **E10** `full_name` and `phone` required; `email` optional (differs from the recommendation).
+- **E12** Quantities are `numeric(12,3)` everywhere.
+- **E21** The ordered 5-rule dispatch header-status precedence in section 11.4, as written.
+- **P3, P9, P19, P20** are in `docs/PERMISSIONS.md`.
 
 ## 1. Decisions this model implements
 
 | Decision | Effect on the model | Source |
 |---|---|---|
 | Stock is a quantity per SKU per location; no unit, serial or barcode tables | `inventory_stockbalance` only. Every ledger row carries a stable source reference and line ID so an optional `unit_id` column can be added later by a new migration. | GAP-C02; BE s14 |
-| Stored buckets per SKU per location: `on_hand`, `reserved`, `quarantined` (outside on hand, unsellable). `available = on_hand - reserved`, computed, never stored | Three integer columns with CHECK constraints. | OQ-18; SPEC s11.1-11.2 |
+| Stored buckets per SKU per location: `on_hand`, `reserved`, `quarantined` (outside on hand, unsellable). `available = on_hand - reserved`, computed, never stored | Three numeric(12,3) columns with CHECK constraints. | OQ-18; SPEC s11.1-11.2 |
 | In transit is derived: open dispatch lines (`dispatched - accepted - resolved`); the sender keeps that quantity in `reserved` | No in-transit column. A read query and an index on line status. | OQ-18 |
 | Rejected or short quantity stays reserved at the sender, flagged as a discrepancy (Under investigation); resolved by return, loss or damage with a mandatory note | `transfers_discrepancy` and `transfers_discrepancyresolution`. | OQ-18; GAP-C08; SPEC s11.3 |
 | Price is a central price list, one row per SKU, not on the item; set by SA or a `manage_prices` holder; not negative; the sale reads from it | `inventory_price` (section 5). Replaces "price from the item" in B6.1. | OQ-19; GAP-M08 |
@@ -34,7 +34,7 @@ One line each: question, then the recommendation. Detail in section 11.4. Permis
 - Tables are named `<app>_<model>` (Django default). Apps follow the README layout. Apps with no tables in Sprints 1-2: `branch_access` (Sprint 5), `approvals` (Sprint 4), `notifications` (Sprint 4), `reports` (read-only queries only).
 - Internal primary keys: `bigint` identity. Public references are separate unique columns (section 3, E2). Framework tables (sessions, migrations, content types) are not modelled here. `django.contrib.auth` Group and Permission tables exist but are unused: the project uses its own roles and grants.
 - Audit fields on editable records: `created_at`, `created_by`, `updated_at`, `updated_by` (BE s3.2; SKILLS). Abbreviated "audit fields" below.
-- Quantities: `integer` in this draft (E12 OPEN-OWNER: if the owner chooses numeric(12,3), every quantity column becomes `numeric(12,3)` with the same CHECKs; recommended by the team, BE s3.12:218, SKILLS:98). Money: `numeric(12,2)`, CHECK `>= 0` where negative is not valid.
+- Quantities: **`numeric(12,3)`** (Owner decision 2026-11-19, E12; BE s3.12:218, SKILLS:98) in every quantity column, ledger delta and balance, with the same CHECKs as before. The service enforces whole numbers unless the item's unit of measure allows decimals (default `piece`: whole).
 - Nothing with history is deleted: foreign keys are `ON DELETE PROTECT` (no cascades); there is no delete path for users, branches, items, documents, ledger or audit rows.
 - Active branch and role used in a request live in the session, validated on every request, and are copied onto the audit event and ledger rows.
 
@@ -51,7 +51,9 @@ Legend: PK primary key, FK foreign key, UQ unique, NN not null, CK check.
 | id | bigint PK | |
 | login_id | varchar(12) NN UQ | `SA-0001` or `USR-0001`; CK `login_id ~ '^(SA\|USR)-[0-9]{4,}$'`; **immutable** (DB trigger rejects any UPDATE of this column); never reused: no user rows are ever deleted and ids come from sequences. |
 | password | varchar(128) NN | Django hashed password (hasher pinned in settings). |
-| full_name | varchar(150) NN | Other identity and employment fields: E10. |
+| full_name | varchar(150) NN | Owner decision 2026-11-19 (E10): `full_name` and `phone` are required. |
+| phone | varchar(30) NN | Required (E10). |
+| email | varchar(254) null | Optional (E10). |
 | status | varchar(12) NN | CK in (`pending`, `active`, `suspended`, `deactivated`). Only `active` can log in (BE s2). |
 | permanent_branch | FK `branches_branch` null | Null for Super Admins (system-wide) and Front Staff (pick at login). Warehouse Admin: the warehouse. Branch Admin: their branch. Service rule: required for WA and BA. |
 | last_login | timestamptz null | |
@@ -121,7 +123,7 @@ In Sprints 1-2 an **item is one SKU** (the sellable configuration). The product/
 | mpn | varchar(100) NN | Manufacturer part number. |
 | description | text | |
 | condition | varchar(12) NN | CK in (`new`, `refurbished`, `used`). |
-| uom | varchar(20) NN default `piece` | Whole numbers in this draft (E12 OPEN-OWNER). |
+| uom | varchar(20) NN default `piece` | Decimals allowed only where the unit of measure allows; `piece` is whole numbers (E12, Owner decision 2026-11-19). |
 | specs | jsonb NN default `{}` | The "key specs" of B4.1, validated against field definitions per category kept in code and served by the API (B4.1). Typed spec columns with filters are Sprint 3 (B12.1). |
 | image_path / image_content_type / image_bytes | varchar / varchar / integer null | One image (B4.2); type and size enforced in the service; at least one image is required to activate. Several images: Sprint 3 table. |
 | show_on_website | boolean NN default false | Used by the Sprint 9 API. |
@@ -140,10 +142,10 @@ Indexes: UQ `sku`; `(status)`; `(category, brand)`; trigram or `lower()` index o
 | id | bigint PK | |
 | item | FK NN | |
 | location | FK `branches_branch` NN | Warehouse or branch. |
-| on_hand | integer NN default 0 | CK `on_hand >= 0`. |
-| reserved | integer NN default 0 | CK `reserved >= 0` and CK `reserved <= on_hand`. |
-| quarantined | integer NN default 0 | CK `quarantined >= 0`. Outside on hand and unsellable (OQ-18). |
-| reorder_level | integer null | Per location; drives low-stock (B7.1). CK `>= 0`. |
+| on_hand | numeric(12,3) NN default 0 | CK `on_hand >= 0`. |
+| reserved | numeric(12,3) NN default 0 | CK `reserved >= 0` and CK `reserved <= on_hand`. |
+| quarantined | numeric(12,3) NN default 0 | CK `quarantined >= 0`. Outside on hand and unsellable (OQ-18). |
+| reorder_level | numeric(12,3) null | Per location; drives low-stock (B7.1). CK `>= 0`. |
 | bin_label | varchar(50) | Warehouse only, optional (BE s3.8). |
 | updated_at | timestamptz NN | |
 
@@ -173,7 +175,7 @@ Indexes: UQ `sku`; `(status)`; `(category, brand)`; trigram or `lower()` index o
 
 Receipts are never edited afterwards (no update path; corrections are Sprint 4 reversals).
 
-**`warehouse_goodsreceiptline`**: `id`; `receipt` FK NN; `line_no` smallint NN; `item` FK NN; `quantity` integer NN CK `> 0`; `unit_cost` numeric(12,2) NN CK `>= 0` (mandatory: E18). UQ `(receipt, line_no)`. Cost is read by SA and WA only.
+**`warehouse_goodsreceiptline`**: `id`; `receipt` FK NN; `line_no` smallint NN; `item` FK NN; `quantity` numeric(12,3) NN CK `> 0`; `unit_cost` numeric(12,2) NN CK `>= 0` (mandatory: E18). UQ `(receipt, line_no)`. Cost is read by SA and WA only.
 
 ### 3.6 transfers (dispatches)
 
@@ -186,7 +188,7 @@ Receipts are never edited afterwards (no update path; corrections are Sprint 4 r
 | kind | varchar(20) NN default `warehouse_dispatch` | CK in (`warehouse_dispatch`) now. Sprint 4 adds `branch_transfer` by a new migration widening the CK; the table, lines and discrepancy flow are reused (no rewrite). |
 | origin | FK `branches_branch` NN | Sprints 1-2: the warehouse. |
 | destination | FK `branches_branch` NN | A branch. CK `origin <> destination`. |
-| status | varchar(24) NN | CK in (`in_transit`, `partially_received`, `completed`, `rejected`, `under_investigation`): the SPEC s5.4 / GAP-H05 words in use (`draft` and `dispatched` are not used, E11). Derived from the line statuses by one pure function (E21, OPEN-OWNER), recomputed under the header lock after every change to a line. |
+| status | varchar(24) NN | CK in (`in_transit`, `partially_received`, `completed`, `rejected`, `under_investigation`): the SPEC s5.4 / GAP-H05 words in use (`draft` and `dispatched` are not used, E11). Derived from the line statuses by one pure function (E21, Owner decision 2026-11-19), recomputed under the header lock after every change to a line. |
 | reason | varchar(200) null | For Sprint 4 branch transfers; null for warehouse dispatches. |
 | dispatched_by | FK user NN | |
 | dispatched_at | timestamptz NN | |
@@ -206,11 +208,11 @@ CK `(decided_by IS NULL) = (decided_at IS NULL)`. Indexes: `(destination, status
 | dispatch | FK NN | |
 | line_no | smallint NN | UQ `(dispatch, line_no)`. |
 | item | FK NN | Active items only (service). |
-| qty_dispatched | integer NN | CK `> 0`. |
-| qty_received | integer null | Physically arrived; set by the receiving decision. |
-| qty_accepted | integer null | Credited to the destination. |
-| qty_rejected | integer null | Arrived but refused. |
-| qty_resolved | integer NN default 0 | Sum of resolutions (section below), maintained by the stock service. |
+| qty_dispatched | numeric(12,3) NN | CK `> 0`. |
+| qty_received | numeric(12,3) null | Physically arrived; set by the receiving decision. |
+| qty_accepted | numeric(12,3) null | Credited to the destination. |
+| qty_rejected | numeric(12,3) null | Arrived but refused. |
+| qty_resolved | numeric(12,3) NN default 0 | Sum of resolutions (section below), maintained by the stock service. |
 | status | varchar(24) NN default `in_transit` | CK in (`in_transit`, `received` (fully accepted, closed), `under_investigation`, `resolved_returned`, `resolved_lost`, `resolved_damaged`, `resolved_mixed`). `resolved_mixed` exists only if partial resolutions are allowed (E4). |
 
 Constraints: CK `qty_received IS NULL OR qty_received BETWEEN 0 AND qty_dispatched` (no overage: E3); CK `qty_accepted IS NULL OR (qty_accepted >= 0 AND qty_accepted <= qty_received)`; CK `qty_rejected IS NULL OR qty_rejected = qty_received - qty_accepted`; CK `qty_resolved >= 0 AND qty_resolved <= qty_dispatched - COALESCE(qty_accepted, 0)`; CK `(qty_received IS NULL) = (qty_accepted IS NULL) AND (qty_accepted IS NULL) = (qty_rejected IS NULL)`.
@@ -228,8 +230,8 @@ Indexes: `(dispatch)`; `(item)`; partial `(status) WHERE status IN ('in_transit'
 |---|---|---|
 | id | bigint PK | |
 | dispatch_line | FK NN UQ | |
-| qty_short | integer NN | `dispatched - received`. CK `>= 0`. |
-| qty_rejected | integer NN | CK `>= 0`. CK `qty_short + qty_rejected > 0`. |
+| qty_short | numeric(12,3) NN | `dispatched - received`. CK `>= 0`. |
+| qty_rejected | numeric(12,3) NN | CK `>= 0`. CK `qty_short + qty_rejected > 0`. |
 | note | text NN | The receiver's note or rejection reason. |
 | flagged_by / flagged_at | FK user NN / timestamptz NN | |
 | status | varchar(10) NN | CK in (`open`, `resolved`). |
@@ -241,7 +243,7 @@ Indexes: `(dispatch)`; `(item)`; partial `(status) WHERE status IN ('in_transit'
 | id | bigint PK | Used as the ledger `source_line_id` for resolution entries. |
 | discrepancy | FK NN | |
 | outcome | varchar(10) NN | CK in (`return`, `loss`, `damage`). |
-| quantity | integer NN | CK `> 0`; the sum per discrepancy may not exceed its `qty_short + qty_rejected` (service, under the line lock; trigger as a backstop). |
+| quantity | numeric(12,3) NN | CK `> 0`; the sum per discrepancy may not exceed its `qty_short + qty_rejected` (service, under the line lock; trigger as a backstop). |
 | note | text NN | CK `length(btrim(note)) > 0`: mandatory. |
 | resolved_by | FK user NN | An admin role (service, B2.4). |
 | role_used | varchar(20) NN | |
@@ -276,7 +278,7 @@ Append-only (no update or delete path).
 
 A completed sale is never edited; only the cancel transition is allowed, through the service. Indexes: `(branch, sold_at DESC)` (sales list, B6.2); `(sold_by, sold_at)`; `(status)`. Customer details, receipts and discounts are Sprint 6.
 
-**`sales_saleline`**: `id` (ledger `source_line_id`); `sale` FK NN; `line_no` smallint NN, UQ `(sale, line_no)`; `item` FK NN; `quantity` integer NN CK `> 0`; `unit_price` numeric(12,2) NN CK `>= 0` (**copied from the price list at sale time**, never recomputed); `line_total` numeric(12,2) NN CK `line_total = quantity * unit_price`. Index `(item)`.
+**`sales_saleline`**: `id` (ledger `source_line_id`); `sale` FK NN; `line_no` smallint NN, UQ `(sale, line_no)`; `item` FK NN; `quantity` numeric(12,3) NN CK `> 0`; `unit_price` numeric(12,2) NN CK `>= 0` (**copied from the price list at sale time**, never recomputed); `line_total` numeric(12,2) NN CK `line_total = quantity * unit_price`. Index `(item)`.
 
 ### 3.8 stock_ledger
 
@@ -308,8 +310,8 @@ UQ `(actor, operation_type, idempotency_key)`. A repeat with the same key and th
 | location | FK `branches_branch` NN | |
 | item | FK NN | |
 | bucket | varchar(12) NN | CK in (`on_hand`, `reserved`, `quarantined`). |
-| delta | integer NN | CK `delta <> 0`. |
-| balance_after | integer NN | Bucket value after the change. CK `>= 0`. |
+| delta | numeric(12,3) NN | CK `delta <> 0`. |
+| balance_after | numeric(12,3) NN | Bucket value after the change. CK `>= 0`. |
 | reason | varchar(30) NN | See section 6 (`supplier_receipt`, `opening_balance`, `dispatch_reserve`, `dispatch_received`, `discrepancy_return`, `discrepancy_loss`, `discrepancy_damage`, `sale`, `sale_cancel`). |
 | source_type | varchar(30) NN | `goods_receipt`, `dispatch`, `discrepancy_resolution`, `sale`, `import_batch`. |
 | source_id | bigint NN | The id of the source document; for an import, which has no document, the id of the operation. |
@@ -533,9 +535,9 @@ erDiagram
     inventory_stockbalance {
         bigint item FK
         bigint location FK
-        int on_hand "CK >= 0"
-        int reserved "CK >= 0 and <= on_hand"
-        int quarantined "CK >= 0"
+        numeric on_hand "CK >= 0"
+        numeric reserved "CK >= 0 and <= on_hand"
+        numeric quarantined "CK >= 0"
     }
     stock_ledger_operation {
         bigint id PK
@@ -547,7 +549,7 @@ erDiagram
     stock_ledger_entry {
         bigint id PK
         varchar bucket "on_hand reserved quarantined"
-        int delta
+        numeric delta
         varchar reason
         varchar source_ref
         bigint source_line_id
@@ -562,7 +564,7 @@ erDiagram
     warehouse_goodsreceiptline {
         bigint receipt FK
         bigint item FK
-        int quantity
+        numeric quantity
         numeric unit_cost "12,2 GHS"
     }
     transfers_dispatch {
@@ -573,23 +575,23 @@ erDiagram
     }
     transfers_dispatchline {
         bigint id PK
-        int qty_dispatched
-        int qty_received
-        int qty_accepted
-        int qty_rejected
-        int qty_resolved
+        numeric qty_dispatched
+        numeric qty_received
+        numeric qty_accepted
+        numeric qty_rejected
+        numeric qty_resolved
         varchar status "in_transit under_investigation resolved"
     }
     transfers_discrepancy {
         bigint dispatch_line FK
-        int qty_short
-        int qty_rejected
+        numeric qty_short
+        numeric qty_rejected
         varchar status
     }
     transfers_discrepancyresolution {
         bigint discrepancy FK
         varchar outcome "return loss damage"
-        int quantity
+        numeric quantity
         text note "mandatory"
     }
     sales_paymentmethod {
@@ -605,7 +607,7 @@ erDiagram
     sales_saleline {
         bigint sale FK
         bigint item FK
-        int quantity
+        numeric quantity
         numeric unit_price "copied from price list"
     }
     audit_auditevent {
@@ -652,12 +654,12 @@ Citations were checked against the inventory files (`file:line`).
 |---|---|
 | E15 | Separate owner and runtime database roles and REVOKE of UPDATE/DELETE: when hosting is chosen (O1.5; hosting is on hold, OQ-20). Triggers (section 7, layer 3) are the guard until then. |
 
-### 11.4 OPEN-OWNER
+### 11.4 Owner decisions 2026-11-19
 
-| Ref | Question | Recommendation |
+| Ref | Question | Owner decision 2026-11-19 |
 |---|---|---|
-| E21 | How is the dispatch header `status` derived from its lines? SPEC s5.3:247 uses "under investigation" for ANY open shortfall, not only "nothing arrived". | Ordered rule, first match wins, using only SPEC s5.4 words: (1) no receiving decision yet: `in_transit`. (2) Decision recorded and any line still `under_investigation` (any open shortfall or rejection, including mixed lines): `under_investigation`. (3) No open discrepancy and every line `received` (fully accepted): `completed`. (4) No open discrepancy, nothing accepted on any line, every discrepancy resolved by return: `rejected` (a fully rejected dispatch that is then returned ends as `rejected`). (5) No open discrepancy otherwise (some accepted, remainder resolved by return, loss or damage): `partially_received` if any line is not fully accepted, else `completed`. Mixed lines (some rejected, some never arrived, nothing accepted) stay `under_investigation` until every line is resolved, then rule 4 or 5 applies. Recomputed under the header lock. |
-| E3 | May a branch report **more** than was dispatched (overage)? | No: `received <= dispatched`; surplus goes through the Sprint 4 found-stock adjustment. |
-| E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Yes: several resolutions per discrepancy; line `resolved_mixed` when the outcomes differ. |
-| E10 | Required identity and employment fields on a user beyond name (SPEC s2.1). | `full_name` required; `phone` and `email` optional. |
-| E12 | Quantities: piece-only integers, or `numeric(12,3)` (BE s3.12:218 and SKILLS:98 allow decimals where the unit of measure does; integer-only is a narrowing). | `numeric(12,3)` unless the owner confirms piece-only. |
+| E21 | How is the dispatch header `status` derived from its lines? SPEC s5.3:247 uses "under investigation" for ANY open shortfall, not only "nothing arrived". | Accepted as written. Ordered rule, first match wins, using only SPEC s5.4 words: (1) no receiving decision yet: `in_transit`. (2) Decision recorded and any line still `under_investigation` (any open shortfall or rejection, including mixed lines): `under_investigation`. (3) No open discrepancy and every line `received` (fully accepted): `completed`. (4) No open discrepancy, nothing accepted on any line, every discrepancy resolved by return: `rejected` (a fully rejected dispatch that is then returned ends as `rejected`). (5) No open discrepancy otherwise (some accepted, remainder resolved by return, loss or damage): `partially_received` if any line is not fully accepted, else `completed`. Mixed lines (some rejected, some never arrived, nothing accepted) stay `under_investigation` until every line is resolved, then rule 4 or 5 applies. Recomputed under the header lock. |
+| E3 | May a branch report **more** than was dispatched (overage)? | Accepted: no overage (`received <= dispatched`); surplus goes through the Sprint 4 found-stock adjustment. |
+| E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Accepted: yes, several resolutions per discrepancy; line `resolved_mixed` when outcomes differ. |
+| E10 | Required identity fields on a user beyond name (SPEC s2.1). | `full_name` and `phone` required; `email` optional. |
+| E12 | Quantity type (BE s3.12:218, SKILLS:98). | `numeric(12,3)` for every quantity. |
