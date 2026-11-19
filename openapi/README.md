@@ -16,11 +16,11 @@ Its sources are `docs/PERMISSIONS.md` (action IDs, roles, conditions) and `docs/
 | URLs | `/api/v1/<plural-noun>/`; `/health/` is the only route outside the prefix. |
 | Auth | Server-side session cookie. Unsafe methods (also login) need the `X-CSRFToken` header; `GET /api/v1/auth/session/` sets the cookie. |
 | Lists | Paginated: `?page=&page_size=` (default 25, max 100), envelope `count, next, previous, results`. Bounded lists are plain arrays marked `x-unpaginated`. |
-| Errors | One `Error` schema for every failure: `code`, plain `message`, and `errors[]` of `field`, `code`, `message`. 400 field errors, 401 not signed in, 403 not allowed, 404 record not found or outside the caller's scope, 409 state conflict, 429 login lock. |
+| Errors | One `Error` schema for every failure: `code`, plain `message`, and `errors[]` of `field`, `code`, `message`. 400 field errors, 401 not signed in, 403 not allowed, 404 record not found or outside the caller's scope, 409 state conflict (including insufficient stock, one status everywhere, with `errors[].field`), 429 login lock. |
 | Money | Decimal string, exactly 2 dp, GHS: `"1250.00"`. Never a JSON number. |
 | Quantities | Decimal string, `numeric(12,3)`: responses always 3 dp (`"12.000"`), requests up to 3 dp. |
 | Time | UTC, RFC 3339 with `Z`. The frontend shows Africa/Accra. |
-| Idempotency | `Idempotency-Key: <uuid>` header on every stock-changing POST (receipt, dispatch, receiving decision, resolution, sale, cancel, import commit). A replay returns the original result; a different body with the same key is 409. |
+| Idempotency | `Idempotency-Key: <uuid>` header on every stock-changing POST (receipt, dispatch, receiving decision, resolution, sale, cancel, import commit). A replay returns the original status and body plus `Idempotent-Replayed: true`; a different body with the same key is 409. |
 | Cost | `average_cost` and `unit_cost` carry `x-visible-to: [super_admin, warehouse_admin]`. For Branch Admin and Front Staff the property is **absent** (not null, not masked). |
 | Menus and forms | `GET /auth/me/` returns the role, active branch, `allowed_actions` and `menu`; objects carry their own `allowed_actions`; `GET /item-field-definitions/` returns the item form; error messages come from `Error`. The frontend hard-codes none of it. |
 

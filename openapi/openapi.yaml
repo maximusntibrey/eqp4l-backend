@@ -32,6 +32,22 @@ info:
     exports or the website API (later sprints).
 
 
+    Decisions taken (sources): ids in URLs are the internal integers, public references are body fields (ERD E2).
+    CSRF: GET /auth/session/ sets the csrftoken cookie, unsafe requests echo it in X-CSRFToken (BE s11). Pagination:
+    page and page_size, default 25, max 100, DRF envelope (OVR s3). Error shape and status policy: 400 field errors,
+    401, 403 role or caller rule, 404 out-of-scope record, 409 state conflict including insufficient stock, 429
+    login lock (OVR s3; PERMISSIONS s8). Login failures use one generic message (P18; BE s11). Brand and sub-type
+    choices come with the field definitions as integer ids (E20); the item list brand filter takes the brand name.
+    The receiving body is derived from ERD s3.6. IP address and device are shown to Super Admin only (SKILLS:226).
+    Dashboard shell and stats follow FE 4.2:51 and BE s8:271 (P12). Duplicate warnings are non-blocking (BE s3.9).
+    Sales list defaults to the active branch. A replay of an idempotent request returns the original status code
+    plus the header Idempotent-Replayed: true (ERD s8). Menu keys follow FE s3. Image size limit 5 MB.
+
+
+    Pending the owner: x-owner-pending lists proposals (own-password change and one-time passwords, reorder level,
+    import unit cost) that need new PERMISSIONS rows or a decision; x-open lists later items.
+
+
     Source of truth: docs/PERMISSIONS.md and docs/ERD.md (approved 2026-11-19). Changing this file after B1.3 merges
     is a contract change: propose, agree with the owner, update, then both sides adjust; breaking changes only at
     a sprint boundary.'
@@ -95,8 +111,6 @@ paths:
         unsafe requests must echo in X-CSRFToken.
       x-action-id: []
       x-public: true
-      x-open:
-      - C2
       security: []
       responses:
         '200':
@@ -122,9 +136,6 @@ paths:
       - branch_admin
       - front_staff
       x-public: true
-      x-open:
-      - C2
-      - C6
       requestBody:
         required: true
         content:
@@ -192,8 +203,6 @@ paths:
       - warehouse_admin
       - branch_admin
       - front_staff
-      x-open:
-      - C20
       security:
       - sessionCookie: []
       responses:
@@ -207,6 +216,41 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/change-password/:
+    post:
+      tags:
+      - Auth
+      operationId: changePassword
+      summary: Change my own password (PROPOSED)
+      description: 'PROPOSAL C5, owner pending: no PERMISSIONS row exists yet. Proposed action auth.change_password,
+        allowed for every signed-in role. Wrong current password is a 400 naming current_password.'
+      x-action-id: []
+      x-owner-pending:
+      - C5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+      security:
+      - sessionCookie: []
+        csrfToken: []
+      responses:
+        '204':
+          description: OK
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      x-proposed-action-id: auth.change_password
+      x-roles:
+      - super_admin
+      - warehouse_admin
+      - branch_admin
+      - front_staff
   /api/v1/context/branches/:
     get:
       tags:
@@ -230,8 +274,6 @@ paths:
           - own_branch
           front_staff:
           - any_active_branch
-      x-open:
-      - C3
       x-unpaginated: true
       security:
       - sessionCookie: []
@@ -331,9 +373,6 @@ paths:
           - own_branch
           front_staff:
           - active_id_name_only
-      x-open:
-      - C1
-      - C3
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
@@ -521,7 +560,7 @@ paths:
       - user.create
       x-roles:
       - super_admin
-      x-open:
+      x-owner-pending:
       - C5
       requestBody:
         required: true
@@ -534,11 +573,11 @@ paths:
         csrfToken: []
       responses:
         '201':
-          description: Created. login_id is the generated, immutable ID to show the Super Admin.
+          description: Created. login_id is the generated, immutable ID, and one_time_password is shown once.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserCreated'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -695,24 +734,20 @@ paths:
       - user.reset_password
       x-roles:
       - super_admin
-      x-open:
+      x-owner-pending:
       - C5
       parameters:
       - $ref: '#/components/parameters/UserId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordReset'
       security:
       - sessionCookie: []
         csrfToken: []
       responses:
-        '204':
-          description: Password replaced (audited).
-        '400':
-          $ref: '#/components/responses/ValidationError'
+        '200':
+          description: Password replaced by a new one-time password, shown once (audited).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneTimePassword'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -781,8 +816,6 @@ paths:
           - active_or_discontinued_with_stock
       x-field-action-id:
       - field.cost.read
-      x-open:
-      - C10
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
@@ -845,8 +878,6 @@ paths:
       - warehouse_admin
       x-field-action-id:
       - field.cost.read
-      x-open:
-      - C16
       requestBody:
         required: true
         content:
@@ -919,8 +950,6 @@ paths:
       - warehouse_admin
       x-field-action-id:
       - field.cost.read
-      x-open:
-      - C16
       parameters:
       - $ref: '#/components/parameters/ItemId'
       requestBody:
@@ -1022,8 +1051,8 @@ paths:
       - Items
       operationId: uploadItemImage
       summary: Upload the item image
-      description: One image (JPG, PNG or WebP). Type and size are enforced; the error names the field image. A
-        new upload replaces the old image.
+      description: One image (JPG, PNG or WebP), at most 5 MB. Type and size are enforced; the error names the field
+        image. A new upload replaces the old image.
       x-action-id:
       - item.upload_image
       x-roles:
@@ -1073,7 +1102,6 @@ paths:
       - warehouse_admin
       x-open:
       - C9
-      - C10
       parameters:
       - name: category
         in: query
@@ -1110,8 +1138,6 @@ paths:
       - warehouse_admin
       - branch_admin
       - front_staff
-      x-open:
-      - C3
       x-unpaginated: true
       parameters:
       - $ref: '#/components/parameters/ItemId'
@@ -1247,14 +1273,59 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/v1/stock/reorder-levels/{item_id}/:
+    put:
+      tags:
+      - Stock
+      operationId: setReorderLevel
+      summary: Set the reorder level of an item at a location (PROPOSED)
+      description: 'PROPOSAL C13, owner pending: no PERMISSIONS row exists yet. Proposed action stock.set_reorder_level
+        for super_admin (any location) and warehouse_admin (the warehouse).'
+      x-action-id: []
+      x-owner-pending:
+      - C13
+      parameters:
+      - $ref: '#/components/parameters/ItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderLevelSet'
+      security:
+      - sessionCookie: []
+        csrfToken: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockBalance'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-proposed-action-id: stock.set_reorder_level
+      x-roles:
+      - super_admin
+      - warehouse_admin
+      x-conditions:
+        stock.set_reorder_level:
+          warehouse_admin:
+          - own_location
   /api/v1/stock/balances/:
     get:
       tags:
       - Stock
       operationId: listStockBalances
       summary: Stock balances at a location
-      description: Available, on hand, reserved and quarantined. Cost is never included. Branch Admin and Front
-        Staff see their own location only (P20).
+      description: Available, on hand, reserved, quarantined and the derived qty_in_transit. Cost is never included.
+        Branch Admin and Front Staff see their own location only (P20).
       x-action-id:
       - stock.list_own_location
       - stock.list_other_locations
@@ -1272,7 +1343,6 @@ paths:
           front_staff:
           - own_branch
       x-open:
-      - C13
       - C18
       parameters:
       - $ref: '#/components/parameters/Page'
@@ -1365,8 +1435,8 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
-      x-open:
-      - C19
+      x-field-action-id:
+      - field.cost.read
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1385,12 +1455,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GoodsReceipt'
-        '200':
-          description: 'Replay of the same Idempotency-Key and body: the original receipt, nothing new written.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GoodsReceipt'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -1410,6 +1477,8 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
+      x-field-action-id:
+      - field.cost.read
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
@@ -1456,6 +1525,8 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
+      x-field-action-id:
+      - field.cost.read
       parameters:
       - $ref: '#/components/parameters/GoodsReceiptId'
       security:
@@ -1479,8 +1550,8 @@ paths:
       - Dispatches
       operationId: createDispatch
       summary: Dispatch stock from the warehouse to a branch
-      description: Warehouse Admin (own location) and Super Admin only. Refused with a plain message when available
-        stock is too low. Audit event dispatch.created.
+      description: Warehouse Admin (own location) and Super Admin only. Insufficient available stock is a 409 insufficient_stock
+        naming lines[n].quantity. Audit event dispatch.created.
       x-action-id:
       - dispatch.create
       x-roles:
@@ -1490,8 +1561,6 @@ paths:
         dispatch.create:
           warehouse_admin:
           - own_location
-      x-open:
-      - C19
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1511,12 +1580,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dispatch'
-        '200':
-          description: Replay of the same Idempotency-Key and body.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dispatch'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -1672,7 +1738,8 @@ paths:
       summary: Record the receiving decision
       description: At the dispatch's destination, by Super Admin, Branch Admin or Front Staff holding receive_stock;
         never by the user who dispatched it (not_self, no Super Admin exception). One decision per dispatch (409
-        afterwards). Audit events dispatch.received and, for any shortfall, discrepancy.flagged.
+        afterwards). A quantity above what was dispatched is a 400 naming the line; a conflicting state is a 409.
+        Audit events dispatch.received and, for any shortfall, discrepancy.flagged.
       x-action-id:
       - dispatch.receive
       x-roles:
@@ -1691,8 +1758,6 @@ paths:
           - destination_is_active_branch
           - perm:receive_stock
           - not_self
-      x-open:
-      - C11
       parameters:
       - $ref: '#/components/parameters/DispatchId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -1713,6 +1778,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dispatch'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -1821,7 +1889,8 @@ paths:
       summary: 'Resolve a shortfall: return, confirm loss or record damage'
       description: The action ID checked depends on body.outcome (return, loss, damage). Super Admin, Warehouse
         Admin and Branch Admin within the branches they may act in; never Front Staff; never the user who recorded
-        the receiving decision (not_receiver, P9). The note is mandatory.
+        the receiving decision (not_receiver, P9). The note is mandatory. A quantity above the unresolved quantity
+        is a 409 naming quantity.
       x-action-id:
       - discrepancy.resolve_return
       - discrepancy.resolve_loss
@@ -1877,6 +1946,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Discrepancy'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -1898,7 +1970,8 @@ paths:
       - Sales
       operationId: listPaymentMethods
       summary: Payment methods for the sell screen
-      description: PROPOSED endpoint, see open question C7.
+      description: 'The seeded payment methods (cash, mobile money, card) the sell screen offers (FE 4.9:83; BE
+        s6:251). Read under the existing sale.create action: no new permission row.'
       x-action-id:
       - sale.create
       x-roles:
@@ -1911,9 +1984,6 @@ paths:
           - own_branch
           front_staff:
           - own_branch
-      x-open:
-      - C3
-      - C7
       x-unpaginated: true
       security:
       - sessionCookie: []
@@ -1930,7 +2000,6 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
-      x-proposed: true
   /api/v1/sales/:
     post:
       tags:
@@ -1938,7 +2007,8 @@ paths:
       operationId: createSale
       summary: Record a sale at my active branch
       description: Super Admin, Branch Admin and Front Staff, at an active branch (Warehouse Admin does not sell,
-        P2). Overselling returns 409 insufficient_stock naming the line quantity. Audit event sale.completed.
+        P2). Overselling is a 409 insufficient_stock naming lines[n].quantity (the same status everywhere). Audit
+        event sale.completed.
       x-action-id:
       - sale.create
       x-roles:
@@ -1951,8 +2021,6 @@ paths:
           - own_branch
           front_staff:
           - own_branch
-      x-open:
-      - C19
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1971,12 +2039,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sale'
-        '200':
-          description: Replay of the same Idempotency-Key and body.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Sale'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -2004,8 +2069,6 @@ paths:
           front_staff:
           - own_branch
           - own_sales_only
-      x-open:
-      - C17
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
@@ -2111,8 +2174,6 @@ paths:
         sale.cancel:
           branch_admin:
           - own_branch
-      x-open:
-      - C19
       parameters:
       - $ref: '#/components/parameters/SaleId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -2132,6 +2193,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sale'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -2155,8 +2219,6 @@ paths:
       - warehouse_admin
       - branch_admin
       - front_staff
-      x-open:
-      - C15
       security:
       - sessionCookie: []
       responses:
@@ -2190,8 +2252,6 @@ paths:
           - own_location
           branch_admin:
           - own_branch
-      x-open:
-      - C15
       parameters:
       - name: location
         in: query
@@ -2233,8 +2293,6 @@ paths:
           - own_location
           branch_admin:
           - own_branch
-      x-open:
-      - C14
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
@@ -2249,8 +2307,7 @@ paths:
       - name: action
         in: query
         schema:
-          type: string
-        description: Action code, for example sale.completed.
+          $ref: '#/components/schemas/AuditAction'
       - name: date_from
         in: query
         schema:
@@ -2284,12 +2341,15 @@ paths:
       - Imports
       operationId: dryRunImport
       summary: CSV import dry run
-      description: Validates every row and reports errors with row numbers. Writes nothing.
+      description: Validates every row and reports errors with row numbers. A row whose SKU already exists is a
+        row error, never an update. Writes nothing.
       x-action-id:
       - import.dry_run
       x-roles:
       - super_admin
       - warehouse_admin
+      x-owner-pending:
+      - C12b
       x-open:
       - C12
       requestBody:
@@ -2314,6 +2374,42 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/imports/templates/{category}/:
+    get:
+      tags:
+      - Imports
+      operationId: getImportTemplate
+      summary: Download the CSV template of a category
+      description: 'Templates per category (BE s3.11:211), read under the existing import actions: no new permission
+        row.'
+      x-action-id:
+      - import.dry_run
+      x-roles:
+      - super_admin
+      - warehouse_admin
+      x-open:
+      - C12
+      parameters:
+      - name: category
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Category'
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: A CSV header row with the category's columns.
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/imports/:
     post:
       tags:
@@ -2327,9 +2423,10 @@ paths:
       x-roles:
       - super_admin
       - warehouse_admin
+      x-owner-pending:
+      - C12b
       x-open:
       - C12
-      - C19
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2348,12 +2445,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportResult'
-        '200':
-          description: Replay of the same Idempotency-Key and file.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImportResult'
+          headers:
+            Idempotent-Replayed:
+              $ref: '#/components/headers/IdempotentReplayed'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -2396,8 +2490,8 @@ components:
       in: header
       required: true
       description: 'UUID chosen by the client for this one submission. Same key and same body replays the original
-        result without any new stock movement; same key with a different body returns 409. Scope: caller plus operation,
-        kept forever.'
+        result (original status code plus header Idempotent-Replayed: true) without any new stock movement; same
+        key with a different body returns 409. Scope: caller plus operation, kept forever.'
       schema:
         type: string
         format: uuid
@@ -2449,9 +2543,19 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PermissionCode'
+  headers:
+    IdempotentReplayed:
+      description: 'true when the response is the stored original of an earlier request with the same Idempotency-Key
+        and body: same status code and body, no new stock movement.'
+      schema:
+        type: string
+        enum:
+        - 'true'
   responses:
     ValidationError:
-      description: The request is invalid. errors names every field at fault.
+      description: The request is invalid (a value is missing, malformed or out of range). errors names every field
+        at fault. A well-formed request that fails because of current state, such as insufficient stock, is 409,
+        not 400.
       content:
         application/json:
           schema:
@@ -2461,8 +2565,8 @@ components:
             message: Please correct the highlighted fields.
             errors:
             - field: lines[0].quantity
-              code: insufficient_stock
-              message: That quantity is more than the stock at this branch.
+              code: invalid_quantity
+              message: Enter a quantity greater than zero.
             request_id: 0b2e5a8c-3f77-4c1f-9a43-7a2b6f1d9e10
     Unauthenticated:
       description: Not signed in, or the session expired. The frontend sends the user to login with a clear message.
@@ -2500,20 +2604,32 @@ components:
             errors: []
             request_id: 0b2e5a8c-3f77-4c1f-9a43-7a2b6f1d9e10
     Conflict:
-      description: 'The request conflicts with the current state: not enough stock, already decided, already cancelled,
-        or an Idempotency-Key reused with a different body.'
+      description: 'The request is well formed but conflicts with the current state. The ONE status for: insufficient
+        stock (sale, dispatch), a resolution larger than the unresolved quantity, already decided, already cancelled,
+        or an Idempotency-Key reused with a different body. errors names the field at fault.'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            code: conflict
-            message: That has already been recorded.
-            errors:
-            - field: non_field
-              code: already_decided
-              message: This dispatch has already been received.
-            request_id: 0b2e5a8c-3f77-4c1f-9a43-7a2b6f1d9e10
+          examples:
+            insufficient_stock:
+              summary: Oversell or insufficient stock
+              value:
+                code: conflict
+                message: That quantity is more than the stock at this branch.
+                errors:
+                - field: lines[0].quantity
+                  code: insufficient_stock
+                  message: Only 3 available at this branch.
+            already_decided:
+              summary: State conflict
+              value:
+                code: conflict
+                message: This dispatch has already been received.
+                errors:
+                - field: non_field
+                  code: already_decided
+                  message: This dispatch has already been received.
     RateLimited:
       description: Too many failed login attempts (5 per login ID plus IP per 15 minutes, then a 15 minute lock,
         P18).
@@ -2550,10 +2666,16 @@ components:
       example: '12.000'
     QuantityInput:
       type: string
-      description: 'A quantity sent by the client: a decimal string with up to 3 decimal places, greater than zero.
-        Example: "5" or "2.500".'
-      pattern: ^\d{1,9}(\.\d{1,3})?$
+      description: 'A quantity sent by the client: a decimal string with up to 3 decimal places, strictly greater
+        than zero (the pattern rejects 0, 0.0 and 0.000). Example: "5" or "2.500".'
+      pattern: ^(?!0+(\.0+)?$)\d{1,9}(\.\d{1,3})?$
       example: '5'
+    QuantityInputOrZero:
+      type: string
+      description: 'A quantity sent by the client where zero is valid (a received or accepted count): a decimal
+        string with up to 3 decimal places, not negative.'
+      pattern: ^\d{1,9}(\.\d{1,3})?$
+      example: '0'
     Timestamp:
       type: string
       description: UTC timestamp in RFC 3339 form ending in Z. The frontend displays it in Africa/Accra (ERD E14).
@@ -2896,6 +3018,9 @@ components:
           - type: 'null'
         role:
           $ref: '#/components/schemas/RoleCode'
+        must_change_password:
+          type: boolean
+          description: True after a one-time password was issued (proposal C5, owner pending).
         permanent_branch:
           oneOf:
           - $ref: '#/components/schemas/BranchRef'
@@ -2927,6 +3052,7 @@ components:
       - phone
       - email
       - role
+      - must_change_password
       - permanent_branch
       - permissions
       - active_branch
@@ -3109,15 +3235,10 @@ components:
           oneOf:
           - $ref: '#/components/schemas/Id'
           - type: 'null'
-        initial_password:
-          type: string
-          format: password
-          description: Chosen by the Super Admin (open question C5).
       required:
       - full_name
       - phone
       - role
-      - initial_password
       additionalProperties: false
     UserUpdate:
       type: object
@@ -3141,6 +3262,35 @@ components:
           - $ref: '#/components/schemas/Id'
           - type: 'null'
       additionalProperties: false
+    OneTimePassword:
+      type: object
+      description: Proposal C5 (owner pending).
+      properties:
+        one_time_password:
+          type: string
+          description: Generated by the server and shown ONCE; it is never stored in readable form and cannot be
+            fetched again. The user must change it at first login.
+      required:
+      - one_time_password
+    UserCreated:
+      allOf:
+      - $ref: '#/components/schemas/User'
+      - $ref: '#/components/schemas/OneTimePassword'
+      description: The created user plus the one-time password (proposal C5, owner pending).
+    ChangePassword:
+      type: object
+      description: 'Proposal C5 (owner pending): any signed-in user changes their own password.'
+      properties:
+        current_password:
+          type: string
+          format: password
+        new_password:
+          type: string
+          format: password
+      required:
+      - current_password
+      - new_password
+      additionalProperties: false
     UserRoleChange:
       type: object
       properties:
@@ -3162,15 +3312,6 @@ components:
           - deactivated
       required:
       - status
-      additionalProperties: false
-    PasswordReset:
-      type: object
-      properties:
-        new_password:
-          type: string
-          format: password
-      required:
-      - new_password
       additionalProperties: false
     PermissionGrantChange:
       type: object
@@ -3197,6 +3338,17 @@ components:
       properties:
         value:
           type: string
+        label:
+          type: string
+      required:
+      - value
+      - label
+    IdOption:
+      type: object
+      description: A managed-list choice whose value is the integer id used in item bodies.
+      properties:
+        value:
+          $ref: '#/components/schemas/Id'
         label:
           type: string
       required:
@@ -3278,12 +3430,12 @@ components:
         brands:
           type: array
           items:
-            $ref: '#/components/schemas/ChoiceOption'
-          description: Managed brand list (value is the brand id).
+            $ref: '#/components/schemas/IdOption'
+          description: Managed brand list (value is the brand id, the same integer ItemCreate.brand takes).
         subtypes:
           type: array
           items:
-            $ref: '#/components/schemas/ChoiceOption'
+            $ref: '#/components/schemas/IdOption'
           description: Managed sub-types of this category (value is the sub-type id).
       required:
       - category
@@ -3356,9 +3508,12 @@ components:
           - $ref: '#/components/schemas/Money'
           - type: 'null'
         average_cost:
-          $ref: '#/components/schemas/Money'
-          description: Derived average cost (ERD E7). PRESENT ONLY for super_admin and warehouse_admin; for branch_admin
-            and front_staff the property is absent from the response, not null.
+          oneOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+          description: Derived average cost (ERD E7); null when no receipt exists yet, so there is no average. PRESENT
+            ONLY for super_admin and warehouse_admin; for branch_admin and front_staff the property is absent from
+            the response, not null.
           x-visible-to:
           - super_admin
           - warehouse_admin
@@ -3514,7 +3669,7 @@ components:
         image:
           type: string
           format: binary
-          description: JPG, PNG or WebP; size limit enforced (open question C8).
+          description: JPG, PNG or WebP, at most 5 MB (technical decision).
       required:
       - image
     ItemPage:
@@ -3606,11 +3761,12 @@ components:
         low_stock:
           type: boolean
           description: available is at or below reorder_level.
-        bin_label:
-          oneOf:
-          - type: string
-            description: Warehouse only.
-          - type: 'null'
+        qty_in_transit:
+          allOf:
+          - $ref: '#/components/schemas/Quantity'
+          description: 'Derived, never stored (OQ-18, BE s3.8): quantity on open dispatch lines (dispatched - accepted
+            - resolved, status in_transit or under_investigation) whose origin is this location, still held in reserved
+            here. 0.000 at locations that dispatched nothing.'
       required:
       - item
       - location
@@ -3620,6 +3776,7 @@ components:
       - available
       - reorder_level
       - low_stock
+      - qty_in_transit
     StockBalancePage:
       allOf:
       - $ref: '#/components/schemas/PageEnvelope'
@@ -3631,6 +3788,20 @@ components:
               $ref: '#/components/schemas/StockBalance'
         required:
         - results
+    ReorderLevelSet:
+      type: object
+      description: Proposal C13 (owner pending). location is required for Super Admin and implied (the warehouse)
+        for Warehouse Admin; null clears the level.
+      properties:
+        location:
+          $ref: '#/components/schemas/Id'
+        reorder_level:
+          oneOf:
+          - $ref: '#/components/schemas/QuantityInput'
+          - type: 'null'
+      required:
+      - reorder_level
+      additionalProperties: false
     FindResult:
       type: object
       description: One search result card (FE 4.5). Cost is never included.
@@ -3986,9 +4157,9 @@ components:
         line_id:
           $ref: '#/components/schemas/Id'
         quantity_received:
-          $ref: '#/components/schemas/QuantityInput'
+          $ref: '#/components/schemas/QuantityInputOrZero'
         quantity_accepted:
-          $ref: '#/components/schemas/QuantityInput'
+          $ref: '#/components/schemas/QuantityInputOrZero'
       required:
       - line_id
       - quantity_received
@@ -4017,6 +4188,32 @@ components:
       required:
       - decision
       additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            decision:
+              const: approve_all
+          required:
+          - decision
+        then:
+          not:
+            anyOf:
+            - required:
+              - lines
+            - required:
+              - note
+      - if:
+          properties:
+            decision:
+              enum:
+              - approve_partial
+              - reject
+          required:
+          - decision
+        then:
+          required:
+          - note
+          - lines
     DiscrepancyResolution:
       type: object
       properties:
@@ -4488,6 +4685,39 @@ components:
       - in_transit
       - low_stock
       - generated_at
+    AuditAction:
+      type: string
+      enum:
+      - auth.login
+      - auth.login_failed
+      - auth.logout
+      - branch.switched
+      - branch.created
+      - branch.updated
+      - branch.status_changed
+      - user.created
+      - user.updated
+      - user.role_assigned
+      - user.status_changed
+      - user.password_reset
+      - user.permission_granted
+      - user.permission_revoked
+      - item.created
+      - item.updated
+      - item.activated
+      - item.discontinued
+      - item.image_uploaded
+      - price.changed
+      - grn.confirmed
+      - dispatch.created
+      - dispatch.received
+      - discrepancy.flagged
+      - discrepancy.resolved
+      - sale.completed
+      - sale.cancelled
+      - import.committed
+      description: Audit action codes. The ERD lists examples only (ERD s3.9); this enum publishes the codes the
+        Sprint 1-2 operations write (BE s9). A new code is a contract change.
     ActivityEvent:
       type: object
       description: One audit event. Cost keys inside previous_value and new_value are removed for branch_admin (never
@@ -4510,8 +4740,7 @@ components:
           - $ref: '#/components/schemas/BranchRef'
           - type: 'null'
         action:
-          type: string
-          description: Dotted action code such as dispatch.received.
+          $ref: '#/components/schemas/AuditAction'
         reference_type:
           oneOf:
           - type: string
@@ -4535,7 +4764,7 @@ components:
         ip_address:
           oneOf:
           - type: string
-            format: ipv4
+            description: IPv4 or IPv6 address.
           - type: 'null'
           x-visible-to:
           - super_admin
@@ -4572,7 +4801,9 @@ components:
         file:
           type: string
           format: binary
-          description: 'CSV, UTF-8. Column set and size limit: open question C12.'
+          description: 'CSV, UTF-8. Columns follow the downloadable template of the category (BE s3.11:211); the
+            exact list is decided in B6.4. Proposal C12b (owner pending): every opening-balance row needs a unit_cost,
+            which feeds the average cost (ERD E7).'
       required:
       - file
     ImportRowError:
@@ -4654,70 +4885,31 @@ components:
       - items_created
       - balances_written
 x-open:
-- id: C1
-  text: Path identifiers are the internal integer ids; public references (GRN-, DSP-, SAL-, BR-) are body fields.
-    ERD E2 defines both but not which one URLs use.
-- id: C2
-  text: 'CSRF bootstrap: GET /auth/session/ sets the csrftoken cookie and login requires the X-CSRFToken header.
-    BE s11 requires secure sessions but names no CSRF mechanism; O2.1 only mentions CSRF settings.'
-- id: C3
-  text: 'Pagination: DRF-style envelope (count, next, previous, results), default page_size 25, max 100. The sources
-    say only ''paginated lists''. Bounded lists (selectable branches, other-branch availability) are plain arrays
-    and marked x-unpaginated.'
-- id: C4
-  text: 'Error format shape (code, message, errors[field, code, message], request_id) and status policy (400 field
-    errors, 401, 403 role/permission/caller rules, 404 out-of-scope records so existence is not revealed, 409 state
-    conflicts, 429 login lock) are authored here: OVR s3 and PERMISSIONS s8 leave them to B1.3.'
-- id: C5
-  text: 'User creation and password reset: the Super Admin types the password (initial_password, new_password).
-    B3.3 does not say whether it is typed or generated, and changing one''s own password is out of scope (PERMISSIONS
-    s1), so there is no must-change flow.'
-- id: C6
-  text: 'Login failure wording: wrong ID or password and a suspended or deactivated account return the same generic
-    401 message (no account enumeration). BE s11, P18 and FE 4.1 do not decide whether inactive accounts get a distinct
-    message.'
-- id: C7
-  text: GET /payment-methods/ has no PERMISSIONS row. The sell screen (FE 4.9) must list payment methods and the
-    table is seeded (ERD s3.7), so it is proposed under sale.create. Needs owner approval before B6.1; remove if
-    rejected.
 - id: C8
-  text: 'Item image: the maximum file size is not stated (BE s3.6 ''size limit enforced''), and how image_url is
-    served depends on storage and hosting (O1.1 on hold, OQ-20).'
+  status: later
+  text: How image_url is served (storage and hosting) waits for the hosting decision (O1.1, OQ-20). The 5 MB size
+    limit is decided.
 - id: C9
-  text: Key specs per category for Sprints 1-2 are not enumerated (BE s3.3-3.5 list full specifications, typed from
-    Sprint 3). The field-definitions response shape is fixed here; its content is decided in B4.1.
-- id: C10
-  text: Brand and sub-type choices come only from item-field-definitions (Super Admin and Warehouse Admin) because
-    ERD E20 adds no brand endpoint. The item list brand filter therefore takes the brand name text.
-- id: C11
-  text: 'Receiving body shape is derived from ERD s3.6 (received, accepted, rejected = received - accepted per line;
-    decision_note): approve_all sends no lines; approve_partial and reject send every line; reject forces accepted
-    to 0.'
+  status: later
+  text: Key specs per category for Sprints 1-2 are decided in B4.1 (full typed specifications are Sprint 3). The
+    field-definitions response shape is fixed here.
 - id: C12
-  text: 'CSV import: column set per category, template download (BE s3.11 mentions templates, no PERMISSIONS row),
-    the status of imported items (Draft proposed, because activation needs a price and an image), behaviour for
-    an existing SKU, and the file size limit are not defined.'
-- id: C13
-  text: Reorder level and warehouse bin label are part of the balance (BE s3.8) but no B step or PERMISSIONS row
-    sets them in Sprints 1-2, so there is no endpoint to change them.
-- id: C14
-  text: 'Activity log: the list of action codes for the filter is not enumerated (ERD gives examples only), so action
-    is free text; ip_address and user_agent are shown to Super Admin only (BE s9 records them, no visibility rule).'
-- id: C15
-  text: Dashboard shell content (B3.4 'shell data') and the stats figures are proposed from P12 and FE 4.2; the
-    sources do not list exact figures or sections.
-- id: C16
-  text: Duplicate warnings on item create and edit are non-blocking (BE s3.9 says warnings 'fire'; it does not say
-    they block).
-- id: C17
-  text: 'Sales list for Super Admin: the branch filter defaults to the active branch; the sources do not say whether
-    Super Admin sees all branches by default.'
+  status: later
+  text: 'CSV import: the exact column list per category and the status of imported items are decided in B6.4 (templates
+    per BE s3.11:211; an existing SKU is a row error).'
 - id: C18
-  text: 'No endpoint reads the stock ledger movement log in Sprints 1-2: B4.3 builds it, but PERMISSIONS has no
-    read row (history endpoints are Sprint 5 Day 24).'
-- id: C19
-  text: Idempotent replay returns the original result with 200 (a first creation returns 201). BE s11 and ERD s8
-    define the key, not the status code.
-- id: C20
-  text: 'Menu: the keys and which role gets which come from FE s3. What the Super Admin ''Warehouse'' menu entry
-    opens is not defined.'
+  status: later
+  text: No endpoint reads the stock ledger movement log in Sprints 1-2; history endpoints are Sprint 5 Day 24. Bin
+    label is also later.
+x-owner-pending:
+- id: C5
+  text: 'Proposal: the server generates a one-time password, shown once, when a Super Admin creates or resets a
+    user; every signed-in user can change their own password (POST /auth/change-password/, proposed action auth.change_password,
+    all roles). PERMISSIONS s1 lists own-password change as out of scope, so this needs a new row.'
+- id: C13
+  text: 'Proposal: an optional reorder_level per item per location, settable by Super Admin and Warehouse Admin
+    (PUT /stock/reorder-levels/{item_id}/, proposed action stock.set_reorder_level) and in the B6.4 import. Needs
+    a new PERMISSIONS row.'
+- id: C12b
+  text: 'Proposal: the CSV opening-balance import requires a unit_cost per row, because it feeds the average cost
+    (ERD E7); alternative is no cost, leaving the average empty until the first receipt.'

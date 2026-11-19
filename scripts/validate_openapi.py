@@ -143,6 +143,46 @@ def _properties(node: Any, loc: str) -> Iterator[tuple[str, str, Any]]:
                 yield f"{sub_loc}/properties/{key}", key, value
 
 
+def _response_cost_fields(spec: dict[str, Any], op: dict[str, Any]) -> list[tuple[str, bool]]:
+    """Cost properties (carrying x-visible-to) reachable from the success responses of an
+    operation, as (name, required-in-its-parent). Follows $ref, arrays, allOf/oneOf and inline
+    schemas transitively."""
+    found: list[tuple[str, bool]] = []
+    seen: set[str] = set()
+
+    def visit(node: Any) -> None:
+        if isinstance(node, list):
+            for value in node:
+                visit(value)
+            return
+        if not isinstance(node, dict):
+            return
+        ref = node.get("$ref")
+        if isinstance(ref, str):
+            if ref not in seen:
+                seen.add(ref)
+                try:
+                    target = _resolve(spec, ref)
+                except (KeyError, TypeError):
+                    return  # reported as an unresolved $ref elsewhere
+                visit(target)
+            return
+        props = node.get("properties")
+        if isinstance(props, dict):
+            required = node.get("required", [])
+            for key, value in props.items():
+                if "cost" in key.lower() and isinstance(value, dict) and "x-visible-to" in value:
+                    found.append((key, key in required))
+        for key, value in node.items():
+            if key not in ("example", "examples"):
+                visit(value)
+
+    for code, response in op.get("responses", {}).items():
+        if str(code).startswith("2"):
+            visit(response)
+    return found
+
+
 def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[str]:
     errors: list[str] = []
 
@@ -164,6 +204,7 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
     security_schemes = set(components.get("securitySchemes", {}))
     tag_names = {t["name"] for t in spec.get("tags", [])}
     open_ids = {o["id"] for o in spec.get("x-open", [])}
+    pending_ids = {o["id"] for o in spec.get("x-owner-pending", [])}
 
     # --- references -----------------------------------------------------------------
     used_schemas: set[str] = set()
@@ -203,9 +244,10 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
             err(f"{loc}: quantity field must use the shared Quantity schema")
         if TIMESTAMP_KEY.search(key) and "Timestamp" not in dumped:
             err(f"{loc}: timestamp field must use the shared Timestamp schema")
+    for loc, key, prop in _properties(spec, "#"):
         if "cost" in key.lower() and prop.get("x-visible-to") != COST_VISIBLE_TO:
             err(f"{loc}: cost field must carry x-visible-to {COST_VISIBLE_TO}")
-    for loc, _key, prop in _properties(schemas, "components.schemas"):
+    for loc, _key, prop in _properties(spec, "#"):
         if "x-visible-to" in prop and not set(prop["x-visible-to"]) <= set(ROLE_CODES.values()):
             err(f"{loc}: x-visible-to has an unknown role")
     for key in ("Error", "ErrorDetail", "PageEnvelope"):
@@ -246,7 +288,11 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
             if not isinstance(ids, list):
                 err(f"{where}: x-action-id (a list) is required")
                 ids = []
-            if not ids and not public:
+            proposed = op.get("x-proposed-action-id")
+            if proposed:
+                if not op.get("x-owner-pending") or not op.get("x-roles"):
+                    err(f"{where}: a proposed action needs x-owner-pending and x-roles")
+            elif not ids and not public:
                 err(f"{where}: no x-action-id and not marked x-public")
             if ids and public and ids != ["auth.login"]:
                 err(f"{where}: x-public operations carry no action ID (except auth.login)")
@@ -269,6 +315,23 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
             for ref_id in op.get("x-open", []):
                 if ref_id not in open_ids:
                     err(f"{where}: x-open {ref_id} is not listed in the top-level x-open")
+            for ref_id in op.get("x-owner-pending", []):
+                if ref_id not in pending_ids:
+                    err(f"{where}: x-owner-pending {ref_id} is not listed at the top level")
+
+            # cost in responses, followed through $ref, arrays and inline schemas
+            reached = _response_cost_fields(spec, op)
+            has_field_action = "field.cost.read" in op.get("x-field-action-id", [])
+            if reached and not has_field_action:
+                err(
+                    f"{where}: a response reaches cost field {reached[0][0]} but the operation "
+                    "has no x-field-action-id field.cost.read"
+                )
+            if has_field_action and not reached:
+                err(f"{where}: x-field-action-id field.cost.read but no response has a cost field")
+            roles = set(op.get("x-roles", []))
+            if any(required for _name, required in reached) and not roles <= set(COST_VISIBLE_TO):
+                err(f"{where}: required cost field, but roles that must not see cost may call this")
 
             # security
             security = op.get("security", spec.get("security", []))
@@ -320,6 +383,11 @@ def validate(spec: dict[str, Any], matrix: dict[str, dict[str, Any]]) -> list[st
                 err(f"{where}: operation with a body must document 400")
             if needs_key and "409" not in responses:
                 err(f"{where}: idempotent operation must document 409")
+            if needs_key:
+                ok_code = next((c for c in responses if str(c).startswith("2")), None)
+                headers = responses.get(ok_code, {}).get("headers", {}) if ok_code else {}
+                if "Idempotent-Replayed" not in headers:
+                    err(f"{where}: idempotent operation needs the Idempotent-Replayed header")
             for code, response in responses.items():
                 if "$ref" in response:
                     continue
