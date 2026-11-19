@@ -4,7 +4,7 @@
 #   bash scripts/check.sh
 #
 # Runs, in order: ruff lint, ruff format check, mypy, bandit, pip-audit, Django system
-# check, missing-migration check, and pytest with coverage. Every step runs even if an
+# check, OpenAPI contract validation (B1.3), missing-migration check, and pytest with coverage. Every step runs even if an
 # earlier one fails; the script exits non-zero if any step failed.
 #
 # Works in Git Bash on Windows and in bash on Linux (CI). `make` is not used because it
@@ -53,6 +53,7 @@ run_step "bandit" "$PY" -m bandit -c pyproject.toml -r . -q
 run_step "pip-audit" "$PY" -m pip_audit --strict --progress-spinner off --disable-pip \
   --require-hashes -r requirements/base.txt -r requirements/dev.txt
 run_step "django check" "$PY" manage.py check --fail-level WARNING
+run_step "openapi contract" "$PY" scripts/validate_openapi.py
 run_step "missing migrations" "$PY" manage.py makemigrations --check --dry-run
 run_step "pytest" "$PY" -m pytest --cov --cov-report=term-missing
 
