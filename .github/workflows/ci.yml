@@ -1,6 +1,7 @@
 # CI (steps G.5, T.15, O1.3). Runs on every pull request and on pushes to main and develop.
 # The job runs the pre-commit hooks, a full-history gitleaks scan and the single check
-# command (bash scripts/check.sh) against a PostgreSQL service container.
+# command (bash scripts/check.sh) against a PostgreSQL service container, then the scripted
+# backup and restore test (T.14).
 # The job name "check" is the required status check for branch protection (G.6).
 # Every action is pinned to a commit SHA (tag in the comment). Versions and
 # vetting are recorded in SKILLS.md Appendix A.
@@ -101,3 +102,21 @@ jobs:
         # ruff, ruff format, mypy, bandit, pip-audit, Django system check,
         # missing-migration check, pytest with coverage against the PostgreSQL service.
         run: bash scripts/check.sh
+
+      - name: Build the app image (Dockerfile, no push)
+        run: docker build --pull=false -t eqp4l-app:ci .
+
+      - name: Restore test (scripts/restore-test.sh, T.14)
+        # Backup, restore into a fresh database and compare counts and checksums, using
+        # the Compose db service (same pinned image). Host port 5433 because the service
+        # container above already holds 5432. The .env is the dummy .env.example; the
+        # throwaway Compose project is removed afterwards.
+        env:
+          POSTGRES_PORT: "5433"
+        run: |
+          cp .env.example .env
+          docker compose up -d --wait db
+          bash scripts/restore-test.sh
+      - name: Remove the restore-test containers and volume
+        if: always()
+        run: docker compose down -v
