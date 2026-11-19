@@ -4,6 +4,17 @@
 
 Scope: Sprints 1 and 2 (MVP). Sources: **BE** = `3-Backend-Requirements.md`, **OVR** = `1-Overview-and-Sprints.md`, **SPEC** = `6-Functional-Workflow-Specification.md` (s11.2 binding for stock movements per GAP-C07), **GAP** = `PROJECT_GAPS_AND_ACTIONS.md`, **SKILLS** = `SKILLS.md`, **OQ-n** = owner decisions of 2026-11-19 (`TASKS.md` / `.claude/STATE.md`). Companion: `docs/PERMISSIONS.md` (B1.1). Decisions are in section 11; only the **OPEN-OWNER** items remain open (and **Pn** in the permission document).
 
+## Owner decisions needed
+
+One line each: question, then the recommendation. Detail in section 11.4. Permission-side items (P3, P9, P19, P20) are in `docs/PERMISSIONS.md`.
+
+- **E3** May a branch report more than was dispatched? Recommend: no; surplus via the Sprint 4 found-stock adjustment.
+- **E4** May one shortfall be resolved in parts? Recommend: yes.
+- **E10** Required user fields beyond name? Recommend: `full_name` required, phone and email optional.
+- **E12** Piece-only integer quantities or `numeric(12,3)`? Recommend: `numeric(12,3)` unless the owner confirms piece-only.
+- **E21** Dispatch header status precedence (SPEC s5.3 and s5.4)? Recommend: the ordered rule in section 11.4.
+- **P3, P9, P19, P20**: see the permission document.
+
 ## 1. Decisions this model implements
 
 | Decision | Effect on the model | Source |
@@ -175,7 +186,7 @@ Receipts are never edited afterwards (no update path; corrections are Sprint 4 r
 | kind | varchar(20) NN default `warehouse_dispatch` | CK in (`warehouse_dispatch`) now. Sprint 4 adds `branch_transfer` by a new migration widening the CK; the table, lines and discrepancy flow are reused (no rewrite). |
 | origin | FK `branches_branch` NN | Sprints 1-2: the warehouse. |
 | destination | FK `branches_branch` NN | A branch. CK `origin <> destination`. |
-| status | varchar(24) NN | CK in (`in_transit`, `partially_received`, `completed`, `rejected`, `under_investigation`): the SPEC s5.4 / GAP-H05 words in use (`draft` and `dispatched` are not used, E11). Derived from the line statuses by one pure function (E21), recomputed under the header lock after every change to a line. |
+| status | varchar(24) NN | CK in (`in_transit`, `partially_received`, `completed`, `rejected`, `under_investigation`): the SPEC s5.4 / GAP-H05 words in use (`draft` and `dispatched` are not used, E11). Derived from the line statuses by one pure function (E21, OPEN-OWNER), recomputed under the header lock after every change to a line. |
 | reason | varchar(200) null | For Sprint 4 branch transfers; null for warehouse dispatches. |
 | dispatched_by | FK user NN | |
 | dispatched_at | timestamptz NN | |
@@ -207,7 +218,7 @@ Constraints: CK `qty_received IS NULL OR qty_received BETWEEN 0 AND qty_dispatch
 Derived quantities (never stored):
 - short (never arrived) = `qty_dispatched - qty_received`
 - unresolved = `qty_dispatched - qty_accepted - qty_resolved`
-- **in transit (open)** = `qty_dispatched - COALESCE(qty_accepted, 0) - qty_resolved` over lines with status `in_transit` or `under_investigation` (OQ-18); whether the dashboard shows the two parts separately: E5.
+- **in transit (open)** = `qty_dispatched - COALESCE(qty_accepted, 0) - qty_resolved` over lines with status `in_transit` or `under_investigation` (OQ-18); the dashboard shows the total, with the Under investigation part as a separate figure (E5 answered).
 
 Indexes: `(dispatch)`; `(item)`; partial `(status) WHERE status IN ('in_transit','under_investigation')` for the in-transit and discrepancy queries.
 
@@ -301,7 +312,7 @@ UQ `(actor, operation_type, idempotency_key)`. A repeat with the same key and th
 | balance_after | integer NN | Bucket value after the change. CK `>= 0`. |
 | reason | varchar(30) NN | See section 6 (`supplier_receipt`, `opening_balance`, `dispatch_reserve`, `dispatch_received`, `discrepancy_return`, `discrepancy_loss`, `discrepancy_damage`, `sale`, `sale_cancel`). |
 | source_type | varchar(30) NN | `goods_receipt`, `dispatch`, `discrepancy_resolution`, `sale`, `import_batch`. |
-| source_id | bigint NN | The document id. |
+| source_id | bigint NN | The id of the source document; for an import, which has no document, the id of the operation. |
 | source_ref | varchar(30) NN | Stable public reference (`GRN-000012`, `DSP-000004`, `SAL-000230`, `IMP-000003`). |
 | source_line_id | bigint NN | The line id (`goods_receipt_line`, `dispatch_line`, `sale_line`; for a resolution the `discrepancyresolution` id; for an import the CSV row number). Stable key for a future `unit_id` link (GAP-C02). |
 | actor | FK user NN | |
@@ -634,7 +645,6 @@ Citations were checked against the inventory files (`file:line`).
 | E14 | Timestamps stored in UTC, shown Africa/Accra. |
 | E17 | New SKUs are `SKU-` plus the key; imported SKUs are accepted if unique. |
 | E20 | Brands and sub-types are seeded by data migration now; a management endpoint comes later with approval. |
-| E21 | Dispatch header status is derived from the lines by one pure function using only the SPEC s5.4 words: `in_transit` until the decision; then `completed` when every line is `received` or fully resolved; with an open discrepancy: `rejected` if the receiver rejected everything, `partially_received` if something was accepted, `under_investigation` if nothing arrived at all. Recomputed under the header lock (section 8). |
 
 ### 11.3 Later
 
@@ -646,6 +656,7 @@ Citations were checked against the inventory files (`file:line`).
 
 | Ref | Question | Recommendation |
 |---|---|---|
+| E21 | How is the dispatch header `status` derived from its lines? SPEC s5.3:247 uses "under investigation" for ANY open shortfall, not only "nothing arrived". | Ordered rule, first match wins, using only SPEC s5.4 words: (1) no receiving decision yet: `in_transit`. (2) Decision recorded and any line still `under_investigation` (any open shortfall or rejection, including mixed lines): `under_investigation`. (3) No open discrepancy and every line `received` (fully accepted): `completed`. (4) No open discrepancy, nothing accepted on any line, every discrepancy resolved by return: `rejected` (a fully rejected dispatch that is then returned ends as `rejected`). (5) No open discrepancy otherwise (some accepted, remainder resolved by return, loss or damage): `partially_received` if any line is not fully accepted, else `completed`. Mixed lines (some rejected, some never arrived, nothing accepted) stay `under_investigation` until every line is resolved, then rule 4 or 5 applies. Recomputed under the header lock. |
 | E3 | May a branch report **more** than was dispatched (overage)? | No: `received <= dispatched`; surplus goes through the Sprint 4 found-stock adjustment. |
 | E4 | May one shortfall be resolved in parts (for example 3 returned and 2 lost)? | Yes: several resolutions per discrepancy; line `resolved_mixed` when the outcomes differ. |
 | E10 | Required identity and employment fields on a user beyond name (SPEC s2.1). | `full_name` required; `phone` and `email` optional. |
