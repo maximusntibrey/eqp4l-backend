@@ -278,7 +278,7 @@ Append-only (no update or delete path).
 
 A completed sale is never edited; only the cancel transition is allowed, through the service. Indexes: `(branch, sold_at DESC)` (sales list, B6.2); `(sold_by, sold_at)`; `(status)`. Customer details, receipts and discounts are Sprint 6.
 
-**`sales_saleline`**: `id` (ledger `source_line_id`); `sale` FK NN; `line_no` smallint NN, UQ `(sale, line_no)`; `item` FK NN; `quantity` numeric(12,3) NN CK `> 0`; `unit_price` numeric(12,2) NN CK `>= 0` (**copied from the price list at sale time**, never recomputed); `line_total` numeric(12,2) NN CK `line_total = quantity * unit_price`. Index `(item)`.
+**`sales_saleline`**: `id` (ledger `source_line_id`); `sale` FK NN; `line_no` smallint NN, UQ `(sale, line_no)`; `item` FK NN; `quantity` numeric(12,3) NN CK `> 0`; `unit_price` numeric(12,2) NN CK `>= 0` (**copied from the price list at sale time**, never recomputed); `line_total` numeric(12,2) NN CK `line_total = round(quantity * unit_price, 2)` (quantity is numeric(12,3), so the product is rounded half-up to 2 dp; the sale service computes `line_total` with the same rounding: Decimal `quantize(Decimal("0.01"), ROUND_HALF_UP)`, matching PostgreSQL `round()` on numeric). Index `(item)`.
 
 ### 3.8 stock_ledger
 
