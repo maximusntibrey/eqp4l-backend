@@ -21,13 +21,16 @@ RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
-COPY --chown=app:app manage.py ./
-COPY --chown=app:app eqp4l ./eqp4l
+COPY manage.py ./
+COPY eqp4l ./eqp4l
 # Collect static files for WhiteNoise. The values are build-time dummies only (never
 # secrets); real values come from the environment at run time.
 RUN DJANGO_SECRET_KEY=build-only-not-a-secret DATABASE_URL=postgres://u:p@localhost/db \
     python manage.py collectstatic --noinput \
-    && chown -R app:app /app
+    && mkdir -p /app/.gunicorn \
+    && chown -R app:app /app/staticfiles /app/.gunicorn
+# Application code stays root-owned and read-only for the runtime user; only staticfiles
+# and the gunicorn control-socket directory are writable by app.
 USER app
 EXPOSE 8000
 CMD ["gunicorn", "eqp4l.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]

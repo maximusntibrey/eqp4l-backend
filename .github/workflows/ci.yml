@@ -103,6 +103,9 @@ jobs:
         # missing-migration check, pytest with coverage against the PostgreSQL service.
         run: bash scripts/check.sh
 
+      - name: Build the app image (Dockerfile, no push)
+        run: docker build --pull=false -t eqp4l-app:ci .
+
       - name: Restore test (scripts/restore-test.sh, T.14)
         # Backup, restore into a fresh database and compare counts and checksums, using
         # the Compose db service (same pinned image). Host port 5433 because the service
