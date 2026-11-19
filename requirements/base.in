@@ -1,0 +1,25 @@
+# Production dependencies (TASKS 2.3, T.6 to T.10 and T.13).
+# Direct dependencies are pinned exactly here; every transitive dependency is
+# pinned with hashes in base.txt. Regenerate with:
+#   pip-compile --generate-hashes --allow-unsafe --strip-extras requirements/base.in
+# Update one dependency (or one related group) per branch (TASKS 0.5, 1.7) and
+# record it in SKILLS.md Appendix A.
+
+# T.6 Django 5.2 LTS (owner's choice) and Django REST Framework
+Django==5.2.19
+djangorestframework==3.18.3
+# T.7 OpenAPI contract generator
+drf-spectacular==0.30.0
+# T.8 PostgreSQL driver (psycopg 3, binary wheels bundle libpq) and env config
+psycopg[binary]==3.3.9
+django-environ==0.14.0
+# T.9 Argon2 password hashing (login rate limit uses DRF's built-in throttling, no package)
+argon2-cffi==25.1.0
+# T.10 CORS, list filtering, image validation
+django-cors-headers==4.9.0
+django-filter==26.2
+Pillow==13.0.0
+# T.13 WSGI server, static files, error monitoring
+gunicorn==27.0.1
+whitenoise==6.12.0
+sentry-sdk==2.75.0

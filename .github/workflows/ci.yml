@@ -1,4 +1,6 @@
-# CI (step G.5). Runs on every pull request and on pushes to main and develop.
+# CI (steps G.5, T.15, O1.3). Runs on every pull request and on pushes to main and develop.
+# The job runs the pre-commit hooks, a full-history gitleaks scan and the single check
+# command (bash scripts/check.sh) against a PostgreSQL service container.
 # The job name "check" is the required status check for branch protection (G.6).
 # Every action is pinned to a commit SHA (tag in the comment). Versions and
 # vetting are recorded in SKILLS.md Appendix A.
@@ -29,6 +31,30 @@ jobs:
     name: check
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+
+    # Real PostgreSQL for the tests and the migration check (DevOps s5, O1.3).
+    # Same major version as local development; pinned by digest (tag in the comment).
+    services:
+      postgres:
+        image: postgres:18.7-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015  # 18.7-alpine
+        env:
+          POSTGRES_DB: eqp4l
+          POSTGRES_USER: eqp4l
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eqp4l -d eqp4l"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # CI-only dummy values for the throwaway service above. Real secrets never live here.
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-a-secret
+      DATABASE_URL: postgres://eqp4l:ci-only-not-a-secret@127.0.0.1:5432/eqp4l
+      TIME_ZONE: Africa/Accra
+
     steps:
       - name: Check out (full history for the secret scan)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -40,16 +66,20 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/*.txt
 
-      - name: Install pre-commit (pinned)
-        run: python -m pip install "pre-commit==${PRE_COMMIT_VERSION}"
+      - name: Install pre-commit (pinned, own venv so it cannot change the project pins)
+        run: |
+          python -m venv "$RUNNER_TEMP/pre-commit-venv"
+          "$RUNNER_TEMP/pre-commit-venv/bin/python" -m pip install "pre-commit==${PRE_COMMIT_VERSION}"
 
       - name: Pre-commit hooks on all files
         # gitleaks is run on the full history in the next step (its hook only
         # scans staged changes). no-commit-to-branch only applies to local commits.
         env:
           SKIP: gitleaks,no-commit-to-branch
-        run: pre-commit run --all-files --show-diff-on-failure
+        run: '"$RUNNER_TEMP/pre-commit-venv/bin/pre-commit" run --all-files --show-diff-on-failure'
 
       - name: Secret scan of the full git history (gitleaks, pinned SHA-256)
         run: |
@@ -62,10 +92,12 @@ jobs:
           "$RUNNER_TEMP/gitleaks" version
           "$RUNNER_TEMP/gitleaks" git --redact --verbose .
 
-      - name: Check command (placeholder until T.15 / B1.8 / O1.3)
-        # TODO(T.15 / B1.8 / O1.3): replace this step with: bash scripts/check.sh
-        # O1.3 also adds a PostgreSQL service container and a missing-migration check.
-        # G.5 stays unticked in TASKS.md until the real check command runs here.
+      - name: Install the pinned requirements (hash-checked)
         run: |
-          echo "::warning title=Placeholder::The single check command (bash scripts/check.sh) does not exist yet. It is added in T.15 / B1.8 / O1.3."
-          echo "Placeholder only: no lint, type check, tests or build ran in this step."
+          python -m pip install --require-hashes -r requirements/base.txt -r requirements/dev.txt
+          python -m pip check
+
+      - name: Check command (bash scripts/check.sh, T.15)
+        # ruff, ruff format, mypy, bandit, pip-audit, Django system check,
+        # missing-migration check, pytest with coverage against the PostgreSQL service.
+        run: bash scripts/check.sh

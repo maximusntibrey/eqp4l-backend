@@ -2,7 +2,7 @@
 
 Applies to both repositories: `maximusntibrey/eqp4l-backend` and `maximusntibrey/p4linventory-frontend`, branches `main` and `develop` (TASKS 1.3, 1.6 G.6; DevOps s4, s8).
 
-**Status: prepared, not applied.** Requiring the `check` status before CI has run once would block merging the Phase A pull requests that add CI. Apply these commands only after:
+**Status: applied and verified on 2026-11-18** (all four branches: `[["check"],true,true,0,true,false,false]`, see OQ-5 in `TASKS.md`). The history below explains the order. Requiring the `check` status before CI has run once would block merging the Phase A pull requests that add CI. Apply these commands only after:
 
 1. the Phase A pull requests are merged into `develop` in both repos, and
 2. the `CI / check` job has reported at least once in each repo (so GitHub knows the `check` context).
