@@ -15,7 +15,7 @@
 # and a reachable PostgreSQL for the tests and the migration check.
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 # Pick the Python interpreter: an active venv, then ./.venv (Windows or Linux layout),
 # then the python on PATH (CI installs the requirements into the runner's Python).
