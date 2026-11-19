@@ -715,7 +715,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 
 | Ref | What was wrong or changed | Repo | Branch | Test added | Merged | Released in |
 |---|---|---|---|---|---|---|
-| FIX-1 | (first entry goes here) | | | | | |
+| FIX-1 | Project could not run locally: Compose hard-failed without `.env`; host Postgres port 5432 clashed with a local Postgres; migrations never applied on start; no seed hook; LF/exec not explicit in `.gitattributes`; cookie Secure=false was not tied to a local flag; no one-command start. Added entrypoint (wait for db, migrate, guarded `seed_dev` for B2.5), defaults, ports 5433/8000, `DJANGO_LOCAL` flag, `scripts/dev.ps1`/`dev.sh`, README section | backend | fix/FIX-1-local-run | tests/test_local_run.py | PR open | |
 
 ## DEPLOYMENT LOG
 

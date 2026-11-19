@@ -33,12 +33,19 @@ Sprint 1, tooling (B1.0). The stack is Python 3.13, Django 5.2 LTS, Django REST 
    .venv/Scripts/python.exe -m pip install --require-hashes -r requirements/base.txt -r requirements/dev.txt
    ```
 
-4. Copy `.env.example` to `.env` and fill in local values (at least a new `POSTGRES_PASSWORD`, letters and digits only, and the same value inside `DATABASE_URL`). `.env` is git-ignored. Never commit secrets.
+4. Copy `.env.example` to `.env` (`copy .env.example .env` in PowerShell, `cp` in Git Bash). If you change `POSTGRES_PASSWORD` (letters and digits only), change it inside `DATABASE_URL` too. `.env` is git-ignored. Never commit secrets.
 5. Start the local stack with Docker (see "Local environment (Docker Compose)" below), or start only the database with `docker compose up -d db` and run Django from the venv.
-6. Run the single check command (lint, format, type check, security scans, migration check, tests):
+6. Run the single check command (lint, format, type check, security scans, migration check, tests). It needs the venv from step 3 and the database from step 5; `make` is not used or needed:
 
    ```
-   bash scripts/check.sh
+   bash scripts/check.sh        # Git Bash on Windows, or bash on Linux
+   ```
+
+   No Git Bash? The same check inside Docker, against the Compose database (the `-v` mount keeps the dev tools out of the runtime image):
+
+   ```
+   docker compose up -d --wait db
+   docker run --rm --network eqp4l_default -v "${PWD}:/src" -w /src -e DATABASE_URL=postgres://eqp4l:changeme@db:5432/eqp4l -e DJANGO_SECRET_KEY=local-check -e DJANGO_LOCAL=true python:3.13-slim bash -c "pip install -q --require-hashes -r requirements/base.txt -r requirements/dev.txt && bash scripts/check.sh"
    ```
 
 To change a dependency, edit `requirements/base.in` or `requirements/dev.in` and re-run `pip-compile --generate-hashes --allow-unsafe --strip-extras` on it (base first). One dependency per branch, recorded in `SKILLS.md` Appendix A.
@@ -48,14 +55,45 @@ To change a dependency, edit `requirements/base.in` or `requirements/dev.in` and
 `compose.yaml` runs the Django app (gunicorn, non-root, built from `Dockerfile`) and PostgreSQL 18.7 (same image digest as CI). PostgreSQL is published on `127.0.0.1` only, data lives in the named volume `eqp4l_pgdata`, and all settings come from the git-ignored `.env`.
 
 ```
-cp .env.example .env                # then edit the passwords
-docker compose up -d --build        # builds the app image, waits for the database healthcheck
+docker compose up -d --build        # works from a fresh clone; .env is optional (see below)
 docker compose ps                   # db should be "healthy"
 docker compose exec app python manage.py check --database default   # settings + database connection
 docker compose down                 # stop (keeps the data); add -v to also delete the volume
 ```
 
-The app answers on `http://127.0.0.1:8000/health/` (200 `ok` when the app and database are up, 503 `unavailable` otherwise); `docker compose ps` shows the app as healthy. Use `127.0.0.1`, not `localhost`, on Windows. If port 5432 is taken, set `POSTGRES_PORT` in `.env` (and in `DATABASE_URL`).
+The app answers on `http://127.0.0.1:8000/health/` (200 `ok` when the app and database are up, 503 `unavailable` otherwise); `docker compose ps` shows the app as healthy. Use `127.0.0.1`, not `localhost`, on Windows. PostgreSQL is published on host port 5433 by default (so it does not clash with a Postgres installed on Windows); change `POSTGRES_PORT` and `APP_PORT` in `.env` (and the port in `DATABASE_URL`) if needed.
+
+## Run it locally (Windows)
+
+Prerequisites: Windows 10/11 with WSL2 enabled, Docker Desktop 4.30 or newer (WSL2 backend, status "Engine running"), Git for Windows 2.40 or newer, PowerShell 5.1 or newer. Python is not needed to run the app (only for `scripts/check.sh`: Python 3.13, `py -V:3.13`).
+
+```powershell
+git clone https://github.com/maximusntibrey/eqp4l-backend.git
+cd eqp4l-backend
+git checkout sprint/1-foundations
+powershell -ExecutionPolicy Bypass -File scripts\dev.ps1
+```
+
+`scripts\dev.ps1` checks that Docker is running, creates `.env` from `.env.example` if it is missing, runs `docker compose up -d --build`, waits for `/health/` and prints the URLs. The manual equivalent is `copy .env.example .env` then `docker compose up -d --build` (the `.env` is optional: Compose has safe local defaults). On start the app container waits for the database, applies migrations (`migrate --noinput`) and, only if `DJANGO_SEED_DEV=1` and a `seed_dev` command exists, seeds dev data.
+
+- Health: http://127.0.0.1:8000/health/ (200 `ok` when the app and database are up). Use `127.0.0.1`, not `localhost`, on Windows.
+- API schema and docs: not served yet. The contract (B1.3) and the `/api/v1/` endpoints come later; for now `/health/` is the only route.
+- PostgreSQL for tools: `127.0.0.1:5433` (user, password and database from `.env`).
+- Dev logins: they arrive with B2.5 (`seed_dev`), together with the user model (B2.2) and login (B2.3). Their passwords will come from `DEV_SEED_PASSWORD_*` in your own git-ignored `.env`. There is no login to try before then.
+- Frontend: run the Vite dev server on http://localhost:5173 with a proxy so the browser sees one origin (no CORS needed): `server: { proxy: { '/api': 'http://127.0.0.1:8000', '/health': 'http://127.0.0.1:8000' } }`. Django already trusts `http://localhost:5173` and `http://127.0.0.1:5173` for CSRF and allows non-HTTPS cookies in local mode (`DJANGO_LOCAL=true`); production refuses insecure cookies.
+- Reset the local database (deletes all local data): `docker compose down -v`, then run `scripts\dev.ps1` again. Do this after pulling B2.2 (the custom user model): migrations applied before it cannot be switched to the new user table.
+- Stop, keep the data: `docker compose down`. Logs: `docker compose logs -f app`.
+
+Common errors:
+
+| Symptom | Fix |
+|---|---|
+| `ports are not available ... 5433` (or 8000) | Something uses the port. Find it: `netstat -ano \| findstr :5433`, then change `POSTGRES_PORT` (or `APP_PORT`) in `.env` and the port in `DATABASE_URL`. |
+| `error during connect ... docker_engine` / "Docker is not running" | Start Docker Desktop and wait for "Engine running", then retry. |
+| "WSL 2 is not installed" / Docker Desktop will not start | In an admin PowerShell: `wsl --install`, reboot, and enable "Use WSL 2 based engine" in Docker Desktop settings. |
+| `entrypoint.sh: not found` or `bad interpreter ^M` | CRLF line endings. `.gitattributes` forces LF; if a checkout predates it, run `git add --renormalize .` or re-clone. The image also strips CR from the entrypoint. |
+| `/health/` times out on `localhost` | Use `http://127.0.0.1:8000/health/` (IPv6 `localhost` issue). |
+| `required variable ... is missing` | Update to the latest branch: Compose no longer needs `.env`. |
 
 ## Backup and restore (T.14)
 

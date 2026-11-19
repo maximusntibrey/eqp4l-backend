@@ -11,10 +11,14 @@ Scope (step B1.0, tooling only): no project apps, no models and no migrations ye
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 from eqp4l.monitoring import init_sentry
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# The Vite dev server (npm run dev), reached as localhost or 127.0.0.1.
+LOCAL_DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 env = environ.Env()
 _env_file = BASE_DIR / ".env"
@@ -91,17 +95,32 @@ PASSWORD_HASHERS = [
 
 # --- Sessions, cookies, CORS and CSRF ---------------------------------------------------
 
-# Secure by default; only local .env files switch these off (staging and production are
-# HTTPS only, DevOps s3).
+# Local-run flag (FIX-1). True when DJANGO_DEBUG or DJANGO_LOCAL is set. It is the ONLY
+# thing that lets the cookies be sent over plain http://localhost, and it adds the local
+# Vite dev origins to the CSRF trusted list. Staging and production never set it.
+LOCAL_DEV: bool = DEBUG or env.bool("DJANGO_LOCAL", default=False)
+
+# Secure by default (staging and production are HTTPS only, DevOps s3). Outside local
+# mode a false value is refused at start-up instead of being honoured silently.
 SESSION_COOKIE_SECURE: bool = env.bool("SESSION_COOKIE_SECURE", default=True)
 CSRF_COOKIE_SECURE: bool = env.bool("CSRF_COOKIE_SECURE", default=True)
+if not LOCAL_DEV and not (SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE):
+    raise ImproperlyConfigured(
+        "SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE may only be false when "
+        "DJANGO_DEBUG=true or DJANGO_LOCAL=true (local development over http)."
+    )
 SESSION_COOKIE_HTTPONLY = True
 
 # Only the frontend's own origins (DevOps s3). Credentials are allowed because the API
-# uses session-cookie login (SKILLS.md API Development Standards).
+# uses session-cookie login (SKILLS.md API Development Standards). Locally the Vite dev
+# server proxies /api to Django, so the browser sees one origin and CORS is not needed.
 CORS_ALLOWED_ORIGINS: list[str] = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS: list[str] = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+if LOCAL_DEV:
+    for _origin in LOCAL_DEV_ORIGINS:
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
 
 # --- Internationalisation ---------------------------------------------------------------
 
