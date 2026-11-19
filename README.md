@@ -67,4 +67,4 @@ bash scripts/restore.sh <dump> <new-database>          # refuses a non-empty tar
 bash scripts/restore-test.sh                           # sample data -> backup -> restore into a fresh DB -> compare counts and checksums
 ```
 
-`restore-test.sh` exits non-zero on any mismatch; it only uses throwaway databases and runs in CI. Retention is not decided (OQ-3 / GAP-M10): `BACKUP_RETENTION_DAYS` is unset by default, so nothing is ever deleted. Recovery procedure: `RUNBOOK.md` (O1.7/O2.x).
+`restore-test.sh` exits non-zero on any mismatch; it only uses throwaway databases and runs as a step of the CI `check` job. Retention is not decided (OQ-3 / GAP-M10): `BACKUP_RETENTION_DAYS` is unset by default, so nothing is ever deleted. Recovery procedure: `RUNBOOK.md` (O1.7/O2.x).
