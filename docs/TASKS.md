@@ -148,12 +148,12 @@ End of sprint:
 
 ### 1.6 Initial git setup _(Applied in the end-of-day cycle (owner, 2026-11-23))_
 
-- [ ] G.1 Backend repo `eqp4l-backend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
-- [ ] G.2 Frontend repo `p4linventory-frontend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
-- [ ] G.3 Add `.gitignore`, `.env.example`, `README.md`, `SKILLS.md` and a copy of this `TASKS.md` to both repos
-- [ ] G.4 Add a pull request template with the quality checklist from rule 0.3 to both repos
-- [ ] G.5 Add CI to both repos that runs the check command on every pull request (done again in B1.8 and F1.2; tick here when the repos are connected)
-- [ ] G.6 Branch protection on `main` and `develop` in both repos: pull request required, CI green required, no force pushes, no direct commits
+- [x] G.1 Backend repo `eqp4l-backend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
+- [x] G.2 Frontend repo `p4linventory-frontend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
+- [x] G.3 Add `.gitignore`, `.env.example`, `README.md`, `SKILLS.md` and a copy of this `TASKS.md` to both repos
+- [x] G.4 Add a pull request template with the quality checklist from rule 0.3 to both repos
+- [x] G.5 Add CI to both repos that runs the check command on every pull request (done again in B1.8 and F1.2; tick here when the repos are connected)
+- [x] G.6 Branch protection on `main` and `develop` in both repos: pull request required, CI green required, no force pushes, no direct commits
 
 ### 1.7 Git procedure for fixes, patches and updates
 
@@ -254,8 +254,8 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 
 ### Git steps for Sprint 1 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
 
-- [ ] S1.G1 Backend: create `sprint/1-foundations` from `develop`, push
-- [ ] S1.G2 Frontend: create `sprint/1-foundations` from `develop`, push
+- [x] S1.G1 Backend: create `sprint/1-foundations` from `develop`, push
+- [x] S1.G2 Frontend: create `sprint/1-foundations` from `develop`, push
 - [ ] S1.G3 Backend: all Sprint 1 steps merged by pull request into the sprint branch, one commit per step
 - [ ] S1.G4 Frontend: all Sprint 1 steps merged by pull request into the sprint branch, one commit per step
 - [ ] S1.G5 Both repos: sprint branch merged into `develop`, staging integration check passed
