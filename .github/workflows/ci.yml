@@ -1,0 +1,42 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: ["sprint/**", develop, main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: eqp4l
+          POSTGRES_USER: eqp4l
+          POSTGRES_PASSWORD: ci_only_password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U eqp4l -d eqp4l" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://eqp4l:ci_only_password@127.0.0.1:5432/eqp4l
+      DJANGO_DEBUG: "True"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+      - run: bash scripts/check.sh
+      - name: Prod image reaches healthy /health/ with DEBUG off
+        run: |
+          docker build --target prod -t eqp4l-prod .
+          docker run -d --name eqp4l-prod --network host             -e DJANGO_DEBUG=False -e AUTO_MIGRATE=True -e DJANGO_SECRET_KEY="$(python -c 'import secrets;print(secrets.token_urlsafe(60))')"             -e DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost -e DATABASE_URL="$DATABASE_URL" eqp4l-prod
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/health/ && exit 0
+            sleep 2
+          done
+          docker logs eqp4l-prod
+          exit 1
