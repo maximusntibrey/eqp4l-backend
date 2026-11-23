@@ -273,12 +273,12 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [x] B1.3 Endpoint list as the API contract (OpenAPI), published first for the frontend
 - [x] B1.4 Short requirements digest in the repo
 - [x] B1.8 Repo, environments, CI and the one check command
-- [ ] B2.1 Schema and migrations (accounts, roles, branches, inventory, stock, ledger, audit)
-- [ ] B2.2 User model and ID generator (`SA-0001` for SuperAdmins, `USR-0001` for others; never changed, never reused)
-- [ ] B2.3 Login, logout, password hashing, secure sessions, rate limit and login log
-- [ ] B2.4 Permission checks by role and branch (only SuperAdmins can assign multiple roles)
-- [ ] B2.5 Seed data: `SA-0001`, 3 branches, sample items with stock
-- [ ] B2.6 Tests: IDs, login, permissions
+- [x] B2.1 Schema and migrations (accounts, roles, branches, inventory, stock, ledger, audit)
+- [x] B2.2 User model and ID generator (`SA-0001` for SuperAdmins, `USR-0001` for others; never changed, never reused)
+- [x] B2.3 Login, logout, password hashing, secure sessions, rate limit and login log
+- [x] B2.4 Permission checks by role and branch (only SuperAdmins can assign multiple roles)
+- [x] B2.5 Seed data: `SA-0001`, 3 branches, sample items with stock
+- [x] B2.6 Tests: IDs, login, permissions
 - [ ] B3.1 Working-branch selection and switching endpoints (every switch logged; requests scoped to the chosen branch)
 - [ ] B3.2 Branch management API (create, edit, deactivate)
 - [ ] B3.3 User management API (auto ID, role, branch, deactivate, reset password, grant per-person permissions such as Receive stock)
@@ -731,6 +731,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-20 | Item API details not in the docs: (a) who manages the brand list (contract has GET only), (b) maximum image size, (c) may a Discontinued item be re-activated, (d) fields of the Sprint 1 dashboard shell. Proposed: (a) SA and WA add brands (POST /brands/ to be added to the contract after approval), (b) 5 MB, (c) no, (d) as in the Dashboard schema of docs/api/openapi.yaml. | backend-dev, B1.3, 2026-11-23 | Approved as proposed (owner, 2026-11-23); in contract v0.1.1 | |
 | OQ-21 | Selling price on item create/edit: contract lets only SA or a Manage prices holder send `selling_price` (row 16); WA without the grant gets 403 on that field. Confirm, and say if an item may be activated without a price. | backend-dev, B1.3, 2026-11-23 | Approved (owner, 2026-11-23): confirmed; activation needs no price, sale blocked until a price exists; in contract v0.1.1 | |
 | OQ-22 | FIX-5 added account status `pending_activation` but not its meaning. When does an account have it, and which targets may `POST /users/{id}/status/` accept? Proposed: a user created by SA is `pending_activation` until the first password change, then `active`; the status endpoint accepts `active`, `suspended`, `deactivated` only (as written in contract v0.1.1). | backend-dev, contract v0.1.1, 2026-11-23 | Approved (owner, 2026-11-23) | |
+| OQ-24 | Client IP behind a proxy: the login and password rate limits key on `REMOTE_ADDR`/X-Forwarded-For handling; a trusted-proxy setting is needed once the host is known. | backend-dev, day-2 review finding 7, 2026-11-23 | BLOCKED by O1.1 (hosting) | |
 
 ## FIX LOG
 
@@ -753,6 +754,15 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-15 | Production start ran migrate without a backup (rule 0.6); auto-migrate is now opt-in via AUTO_MIGRATE=True (compose and CI only). | backend | n/a | tests/test_check_config.py | | |
 | FIX-16 | SPECTACULAR VERSION 0.1.0 vs contract 0.1.1; set to 0.1.1 and tested equal. | backend | n/a | tests/test_check_config.py | | |
 | FIX-17 | check.sh comment used the non-bash invocation; corrected. | backend | n/a | n/a | | |
+| FIX-18 | `assign_roles` now requires `users.manage` for an actor and refuses (403) when existing + wanted roles exceed one for a non-Super Admin. | backend | n/a | tests/test_permissions.py (guard test: `require_action` already refused; union rule added as defence) | | |
+| FIX-19 | Login rate-limit race: count-then-log serialised per (login ID, IP) with `pg_advisory_xact_lock`. | backend | n/a | tests/test_auth.py (10 concurrent: 5x 401, 5x 429; failed first) | | |
+| FIX-20 | Append-only tests cover all 6 tables x UPDATE, DELETE, TRUNCATE; TRUNCATE privilege asserted revoked by `lock_append_only_tables`. | backend | n/a | tests/test_append_only.py (guard test: all already held) | | |
+| FIX-21 | Stock service: a duplicate source-line post is 409 `idempotency_conflict` (nearest existing contract code; no generic conflict code exists); every running balance step is validated (409 `insufficient_stock`), no IntegrityError. | backend | n/a | tests/test_stock_service.py | | |
+| FIX-22 | Session fixation: login replaces a planted anonymous session key. | backend | n/a | tests/test_auth.py (guard test) | | |
+| FIX-23 | `/auth/password/`: wrong current password limited to 5 per 15 min per user, then 429 `rate_limited` + Retry-After; every try logged (login_log + audit `password_change_failed`, no password). Contract gap: `/auth/password/` lacks a 429 response and `TooManyRequests` says "Login rate limit". | backend | n/a | tests/test_auth.py | | |
+| FIX-24 | (number kept for the brief's finding 7) Trusted-proxy client IP deferred, see OQ-24 (blocked by O1.1). | backend | n/a | n/a | | |
+| FIX-25 | TRUNCATE trigger on `accounts_loginidsequence` (new migration accounts 0005; 0004 already applied to the dev DB); ERD.md table-name note added; test conftest flush also disables it. | backend | n/a | tests/test_ids.py | | |
+| FIX-26 | Comments fixed: `.env.example` dev seed users (active, no forced change, local only); `roles/models.py`, `sales/models.py` seeding is post_migrate in `config/reference_data.py`. | backend | n/a | n/a | | |
 
 ## DEPLOYMENT LOG
 
