@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+backups/
+htmlcov/
+.venv
+__pycache__
+*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+staticfiles
