@@ -16,20 +16,29 @@ if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is false.")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
-# NOTE (B1.2 gate): django.contrib.auth/admin are deliberately NOT installed yet.
-# The custom user model (immutable SA-0001 / USR-0001 login IDs) must exist in the first
-# auth migration, and no model or migration is allowed before the owner approves the ERD.
-# When approved: add the `accounts` app and `django.contrib.auth`, set
-# AUTH_USER_MODEL = "accounts.User", and add AuthenticationMiddleware.
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
+    "django.contrib.auth",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
     "django_filters",
+    # Project apps (ERD s5). `accounts` holds the custom user model.
+    "accounts",
+    "roles",
+    "branches",
+    "branch_access",
+    "inventory",
+    "stock_ledger",
+    "warehouse",
+    "transfers",
+    "sales",
+    "audit",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -38,6 +47,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -51,6 +61,16 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Argon2 first; PBKDF2 stays so any hash made elsewhere can still be verified.
+# OQ-13: the only password rule is a 10-character minimum.
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
+]
+PASSWORD_MIN_LENGTH = 10
+ONE_TIME_PASSWORD_HOURS = 72  # OQ-13
+LOGIN_MAX_FAILURES = 5  # per login ID and IP (OQ-13)
+LOGIN_WINDOW_MINUTES = 15  # failures counted in this window; the lockout lasts as long
+CSRF_FAILURE_VIEW = "config.errors.csrf_failure"
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
@@ -89,10 +109,13 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
-    # Deny by default; views opt in. Authentication classes arrive with the user model (B2).
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
-    "UNAUTHENTICATED_USER": None,
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    # Deny by default; views opt in. Until a one-time password is changed only /auth/* is open.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.SessionAuth"],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "accounts.permissions.IsActiveAccount",
+        "accounts.permissions.PasswordChangeNotRequired",
+    ],
+    "EXCEPTION_HANDLER": "config.errors.exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
@@ -105,6 +128,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
     "VERSION": "0.1.1",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {"RoleCodeEnum": "accounts.serializers.ROLE_CHOICES"},
 }
 
 LOGGING = {
@@ -112,6 +136,14 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env.str("LOG_LEVEL", default="INFO")},
+}
+
+# Local-only dev seed passwords (read by manage.py seed_dev, which refuses to run when DEBUG is off).
+DEV_SEED_PASSWORDS = {
+    "SA": env.str("DEV_SA_0001_PASSWORD", default=""),
+    "WA": env.str("DEV_WAREHOUSE_ADMIN_PASSWORD", default=""),
+    "BA": env.str("DEV_BRANCH_ADMIN_PASSWORD", default=""),
+    "FS": env.str("DEV_FRONT_STAFF_PASSWORD", default=""),
 }
 
 # Error monitoring is on only when a DSN is configured.
