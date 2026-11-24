@@ -36,6 +36,11 @@ def request_key(request: Request) -> uuid.UUID:
         ) from None
 
 
+def operation_id_for(request: Request) -> uuid.UUID:
+    """The stock operation ID for this action: stable for a retry, never shared between users or URLs."""
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"op:{request.user.pk}:{request.path}:{request_key(request)}")
+
+
 def derive_one_time_password(request: Request) -> str:
     """A one-time password derived from the key, so a replay can show it again without storing it.
 

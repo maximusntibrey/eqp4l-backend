@@ -12,6 +12,8 @@ urlpatterns = [
     path("api/v1/branches/", include("branches.urls")),
     path("api/v1/users/", include("accounts.user_urls")),
     path("api/v1/", include("inventory.urls")),
+    path("api/v1/", include("warehouse.urls")),
+    path("api/v1/", include("transfers.urls")),
     path("api/v1/dashboard/", DashboardView.as_view(), name="dashboard"),
 ]
 

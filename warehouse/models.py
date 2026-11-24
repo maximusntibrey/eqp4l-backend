@@ -10,7 +10,7 @@ class GoodsReceipt(models.Model):
 
     reference = models.CharField(max_length=20, unique=True)  # GRN-000001
     location = models.ForeignKey("branches.Location", on_delete=models.PROTECT, related_name="+")
-    supplier_name = models.CharField(max_length=150)
+    supplier_name = models.CharField(max_length=200)  # matches the contract's maxLength
     notes = models.TextField(blank=True)
     received_at = models.DateTimeField(default=timezone.now)
     received_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
