@@ -77,3 +77,19 @@ def test_health_over_http_is_not_redirected_when_debug_off(reload_settings, sett
     client = APIClient()
     assert client.get("/health/").status_code == 200
     assert client.get("/api/v1/auth/me/").status_code == 301  # everything else still redirects
+
+
+def test_sentry_sends_no_local_variables_or_pii(reload_settings) -> None:  # type: ignore[no-untyped-def]
+    # sentry-sdk 3.x has no include_local_variables/send_default_pii; data_collection is the equivalent.
+    with mock.patch("sentry_sdk.init") as init:
+        reload_settings(SENTRY_DSN="https://key@example.invalid/1")
+    dc = init.call_args.kwargs["data_collection"]
+    assert dc["user_info"] is False and dc["stack_frame_variables"] is False and dc["http_bodies"] == []
+
+
+def test_sentry_options_are_accepted_by_the_installed_sdk(reload_settings) -> None:  # type: ignore[no-untyped-def]
+    import sentry_sdk
+
+    reload_settings(SENTRY_DSN="https://key@example.invalid/1")  # real init: an unknown option raises
+    assert sentry_sdk.get_client().options["data_collection"]["stack_frame_variables"] is False
+    sentry_sdk.init()  # leave Sentry off for later tests

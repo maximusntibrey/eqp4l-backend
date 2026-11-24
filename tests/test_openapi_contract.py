@@ -50,7 +50,7 @@ def operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
 def test_contract_is_valid_openapi(spec: dict[str, Any]) -> None:
     validate_schema(spec)
     assert spec["openapi"].startswith("3.")
-    assert spec["info"]["version"] == "0.1.1"
+    assert spec["info"]["version"] == "0.1.2"
 
 
 def test_every_path_is_versioned_or_health(spec: dict[str, Any]) -> None:
@@ -116,6 +116,24 @@ def test_brand_endpoints_and_price_rule_documented(spec: dict[str, Any]) -> None
     for op in (paths["/api/v1/items/"]["post"], paths["/api/v1/items/{id}/"]["patch"]):
         assert "403" in op["responses"] and "manage_prices" in op["x-permission"]
     assert paths["/api/v1/working-branch/"]["get"]["x-permission"].startswith("FS, SA")
+
+
+def test_v012_changes(spec: dict[str, Any]) -> None:
+    schemas, responses = spec["components"]["schemas"], spec["components"]["responses"]
+    assert "`conflict`" in responses["Conflict"]["description"]
+    assert "429" in spec["paths"]["/api/v1/auth/password/"]["post"]["responses"]
+    assert "Login rate limit" not in responses["TooManyRequests"]["description"]
+    assert {"sales.record", "activity.view", "find.use", "dashboard.view", "dispatches.receive"} <= set(
+        schemas["ActionPermission"]["enum"]
+    )
+    me = schemas["Me"]
+    assert {"must_pick_branch", "can_assign_multiple_roles", "home_links"} <= set(me["required"])
+    assert set(schemas["MenuItem"]["properties"]) == {"key", "label", "path"}
+    assert "placement" not in str(me)
+    for path in ("/api/v1/branches/", "/api/v1/users/", "/api/v1/dashboard/"):  # SA all-branch view filter
+        refs = [p.get("$ref", "") for p in spec["paths"][path]["get"]["parameters"]]
+        assert "#/components/parameters/BranchFilter" in refs, path
+    assert "403" in spec["paths"]["/api/v1/dashboard/"]["get"]["responses"]
 
 
 def test_all_refs_resolve(spec: dict[str, Any]) -> None:

@@ -117,7 +117,7 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "config.errors.exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.StandardPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -126,9 +126,15 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.1.1",
+    "VERSION": "0.1.2",
     "SERVE_INCLUDE_SCHEMA": False,
-    "ENUM_NAME_OVERRIDES": {"RoleCodeEnum": "accounts.serializers.ROLE_CHOICES"},
+    "ENUM_NAME_OVERRIDES": {
+        "RoleCodeEnum": "accounts.serializers.ROLE_CHOICES",
+        "ActionPermissionEnum": "roles.permissions.ACTIONS",
+        "PersonPermissionEnum": "roles.constants.PERSON_PERMISSIONS",
+        "UserStatusEnum": "accounts.models.UserStatus",
+        "UserStatusTargetEnum": "accounts.user_views.STATUS_TARGETS",
+    },
 }
 
 LOGGING = {
@@ -154,4 +160,12 @@ if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=env.str("SENTRY_ENVIRONMENT", default="local"),
+        # sentry-sdk 3.x dropped include_local_variables/send_default_pii (init raises "Unknown option"); the
+        # data_collection option replaces them. Locals may hold passwords or one-time passwords.
+        data_collection={
+            "user_info": False,
+            "stack_frame_variables": False,
+            "cookies": {"mode": "off"},
+            "http_bodies": [],
+        },
     )

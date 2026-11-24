@@ -59,7 +59,7 @@ def post_stock_changes(
     """Apply `changes` atomically and write the ledger rows plus one audit event.
 
     Rules: no bucket goes negative and reserved never exceeds on_hand (409 insufficient_stock naming the
-    item and location); a source line can never post twice (409 idempotency_conflict).
+    item and location); a source line can never post twice (409 conflict).
     Audit event: `audit_action`.
     """
     if not changes:
@@ -119,7 +119,7 @@ def post_stock_changes(
             with transaction.atomic():
                 StockMovement.objects.bulk_create(rows)
         except IntegrityError as exc:  # only movements_no_double_post can remain: balances were checked above
-            raise ApiError(409, "idempotency_conflict", "This stock change has already been posted.") from exc
+            raise ApiError(409, "conflict", "This stock change has already been posted.") from exc
         record_event(
             audit_action,
             actor=actor,

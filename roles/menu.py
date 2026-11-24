@@ -1,4 +1,9 @@
-"""Allowed menu per role (Frontend s3, at most 5 items; built by the server, enforced separately)."""
+"""Allowed menu per role (Frontend s3, at most 5 nav items; built by the server, enforced separately).
+
+OQ-23 (contract v0.1.2): Super Admin opens Sell, Activity, Find and Receive from Home, so they are
+`home_links` (separate from `menu`), so they never take one of the 5 nav slots. The actions behind them are
+`sales.record`, `activity.view`, `find.use` and `dispatches.receive` (roles.permissions).
+"""
 
 from roles import constants as c
 
@@ -7,6 +12,7 @@ _FIND = ("find", "Find", "/find")
 _SELL = ("sell", "Sell", "/sell")
 _STOCK = ("stock", "Stock", "/stock")
 _RECEIVE = ("receive", "Receive", "/receive")
+_ACTIVITY = ("activity", "Activity", "/activity")
 
 MENUS: dict[str, list[tuple[str, str, str]]] = {
     c.FRONT_STAFF: [_SELL, _FIND, _STOCK, _RECEIVE],
@@ -26,7 +32,17 @@ MENUS: dict[str, list[tuple[str, str, str]]] = {
         ("users", "Users", "/users"),
     ],
 }
+HOME_LINKS: dict[str, list[tuple[str, str, str]]] = {
+    c.SUPER_ADMIN: [_ACTIVITY, _SELL, _FIND, _RECEIVE],
+    c.WAREHOUSE_ADMIN: [_ACTIVITY],  # OQ-25: own location's activity only (OQ-5)
+    c.BRANCH_ADMIN: [_ACTIVITY],
+}
 
 
 def menu_for(role: str | None) -> list[dict[str, str]]:
     return [{"key": k, "label": label, "path": p} for k, label, p in MENUS.get(role or "", [])]
+
+
+def home_links_for(role: str | None) -> list[dict[str, str]]:
+    """Home tiles, separate from the max-5 `menu` (OQ-23)."""
+    return [{"key": k, "label": label, "path": p} for k, label, p in HOME_LINKS.get(role or "", [])]

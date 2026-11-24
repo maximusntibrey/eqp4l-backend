@@ -68,9 +68,12 @@ class MeSerializer(serializers.Serializer[object]):
     user = UserSerializer()
     active_role = serializers.ChoiceField(choices=ROLE_CHOICES)
     working_branch = BranchSerializer(allow_null=True)
+    must_pick_branch = serializers.BooleanField()
+    can_assign_multiple_roles = serializers.BooleanField()
     must_change_password = serializers.BooleanField()
     permissions = serializers.ListField(child=serializers.ChoiceField(choices=[(a, a) for a in ACTIONS]))
     menu = MenuItemSerializer(many=True)
+    home_links = MenuItemSerializer(many=True)
 
 
 class CsrfSerializer(serializers.Serializer[object]):

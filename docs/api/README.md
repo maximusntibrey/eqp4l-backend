@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.1.1), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.1.2), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -8,6 +8,14 @@
 - Validated by `tests/test_openapi_contract.py` (schema validity, every path under `/api/v1/` or `/health/`, permission on every operation, Idempotency-Key on every state-changing operation except login, logout and password change, status enums match the SKILLS mapping, no cost field reachable by BA/FS).
 
 ## Changelog
+
+### 0.1.2 (2026-11-24, owner-approved; published at the start of Day 3)
+- New generic error code `conflict` (409) for any clash (duplicate stock post, code or name already in use, self status change). The stock service now answers `conflict` for a duplicate post; `idempotency_conflict` stays for an Idempotency-Key reused with a different body.
+- `POST /api/v1/auth/password/` documents 429 `rate_limited` (5 wrong current passwords per 15 min per user); `TooManyRequests` reworded as generic.
+- OQ-23: `ActionPermission` gains `sales.record` (Sell, row 36), `activity.view` (Activity, row 41), `find.use` (Find, rows 13 and 22) and `dashboard.view` (Home dashboard, row 40); Receive uses the existing `dispatches.receive`. PERMISSION_TABLE rows 44 to 47.
+- `Me` gains `home_links` (Sell, Activity, Find, Receive Home tiles for Super Admin, new `MenuItem` schema, separate from the max-5 `menu`), `can_assign_multiple_roles` (true only for Super Admin) and `must_pick_branch` (true only when the role requires a working branch and none is chosen, i.e. Front Staff; always false for Super Admin, Branch Admin and Warehouse Admin). All three are required.
+- Super Admin is never asked to pick a branch and works across all branches (owner, 2026-11-24): new optional query parameter `branch` (integer) on `GET /branches/`, `GET /users/` and `GET /dashboard/` views one branch; without it the Super Admin sees all branches. It is ignored for roles with a fixed location. The dashboard answers 400 for an unknown branch. `PUT /working-branch/` stays available to the Super Admin as an optional context (OQ-12) but is never required.
+- Corrections found in B3: `GET /dashboard/` is SA, WA, BA only and returns 403 for Front Staff (table row 40; the contract said any logged-in user); `PUT /working-branch/` accepts only active locations of kind branch; `PUT /users/{id}/permissions/` allows `receive_stock` only for Front Staff users (table section 3). Documentation only, no shape change.
 
 ### 0.1.1 (2026-11-23, owner-approved)
 - FIX-4: `Idempotency-Key` header on every state-changing operation except login, logout and password change (each also documents 400 and 409).

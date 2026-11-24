@@ -93,7 +93,7 @@ def test_same_source_line_cannot_post_twice(locations: dict[str, Any], item: Ite
     post_stock_changes([change(a, item, 5)], actor=None)
     with pytest.raises(ApiError) as exc:
         post_stock_changes([change(a, item, 5)], actor=None)
-    assert (exc.value.status, exc.value.code) == (409, "idempotency_conflict")
+    assert (exc.value.status, exc.value.code) == (409, "conflict")
     assert balance(a, item).on_hand == 5
     assert StockMovement.objects.count() == 1
 
