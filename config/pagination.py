@@ -1,0 +1,38 @@
+"""The contract's paginated envelope: count, page, page_size, next, previous, results."""
+
+from typing import Any
+
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data: Any) -> Response:
+        return Response(
+            {
+                "count": self.page.paginator.count,  # type: ignore[union-attr]
+                "page": self.page.number,  # type: ignore[union-attr]
+                "page_size": self.get_page_size(self.request),  # type: ignore[arg-type]
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+            }
+        )
+
+    def get_paginated_response_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "required": ["count", "page", "page_size", "next", "previous", "results"],
+            "properties": {
+                "count": {"type": "integer"},
+                "page": {"type": "integer"},
+                "page_size": {"type": "integer"},
+                "next": {"type": "string", "nullable": True},
+                "previous": {"type": "string", "nullable": True},
+                "results": schema,
+            },
+        }

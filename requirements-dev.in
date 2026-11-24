@@ -1,0 +1,13 @@
+# Dev/CI-only dependencies. Constrained by the runtime lock.
+-c requirements.txt
+pip-tools
+pytest
+pytest-django
+pytest-cov
+factory-boy
+ruff
+mypy
+django-stubs
+djangorestframework-stubs
+bandit
+pip-audit
