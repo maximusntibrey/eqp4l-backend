@@ -78,3 +78,12 @@ def test_seed_rejects_a_short_password(seed_env: Any) -> None:
     seed_env.DEV_SEED_PASSWORDS = {**PASSWORDS, "FS": "short"}
     with pytest.raises(CommandError, match="FS"):
         run_seed()
+
+
+def test_every_stocked_item_has_a_cost_row(seed_env: Any) -> None:
+    """OQ-30: stock enters only via receipts (cost row first) and the seed (cost row with the item)."""
+    from inventory.models import ItemCost
+
+    run_seed()
+    stocked = set(StockBalance.objects.values_list("item_id", flat=True))
+    assert stocked and stocked <= set(ItemCost.objects.values_list("item_id", flat=True))

@@ -16,7 +16,7 @@ from accounts.models import User
 from audit.services import record_event
 from branches.models import Location, LocationKind
 from config.errors import ApiError
-from roles.permissions import require_action, require_location
+from roles.permissions import can_act_in, require_action, require_location
 from roles.services import active_role
 from stock_ledger.models import Bucket, MovementType, SourceType
 from stock_ledger.services import StockChange, post_stock_changes
@@ -151,7 +151,8 @@ def receive_dispatch(
         if dispatch is None:
             raise ApiError(404, "not_found", "Not found.")
         destination = dispatch.destination_location
-        require_location(actor, destination, request.session)  # destination only; the sender cannot approve
+        if not can_act_in(actor, destination, request.session):  # destination only; else 404 (OQ-30)
+            raise ApiError(404, "not_found", "Not found.")
         if dispatch.status != DispatchStatus.IN_TRANSIT:
             raise ApiError(409, "conflict", "This dispatch already has a receiving decision.")
         status, decided, note = _decide(dispatch, data)

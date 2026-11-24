@@ -502,7 +502,8 @@ def test_only_the_destination_can_receive_and_fs_needs_the_grant(
     body = {"decision": "reject", "reason": "no"}
     other_ba = make_user("branch_admin", "b")
     wrong = call(client_as(other_ba), "POST", url, body)
-    assert wrong.status_code == 403 and wrong.json()["code"] == "wrong_branch"
+    assert wrong.status_code == 404 and wrong.json()["code"] == "not_found"  # OQ-30: same as a missing id
+    assert call(client_as(other_ba), "POST", f"{TRF}999999/receive/", body).json() == wrong.json()
     assert call(client_as(users["wa"]), "POST", url, body).status_code == 403  # the sender cannot approve
     plain_fs = make_user("front_staff")
     plain_client = client_as(plain_fs)
@@ -512,7 +513,7 @@ def test_only_the_destination_can_receive_and_fs_needs_the_grant(
     # FS with the grant at the destination may; the grant works only at the working branch
     granted_at_b = client_as(users["fs"])
     call(granted_at_b, "PUT", "/api/v1/working-branch/", {"branch_id": locations["b"].pk})
-    assert call(granted_at_b, "POST", url, body).status_code == 403
+    assert call(granted_at_b, "POST", url, body).status_code == 404  # out of scope looks like a missing id
     assert (
         call(fs_receiver, "PUT", "/api/v1/working-branch/", {"branch_id": locations["a"].pk}).status_code
         == 200
@@ -639,8 +640,9 @@ def test_dispatch_list_and_detail_are_scoped_to_the_branch(
     for client in (client_as(users["ba"]), fs_receiver):
         assert [r["id"] for r in call(client, "GET", TRF).json()["results"]] == [to_a["id"]]
         assert call(client, "GET", f"{TRF}{to_a['id']}/").json()["reference"] == to_a["reference"]
-        denied = call(client, "GET", f"{TRF}{to_b['id']}/")
-        assert denied.status_code == 403 and denied.json()["code"] == "wrong_branch"
+        denied = call(client, "GET", f"{TRF}{to_b['id']}/")  # OQ-30: 404, identical to a missing id
+        missing = call(client, "GET", f"{TRF}999999/")
+        assert denied.status_code == 404 and denied.json() == missing.json()
         assert call(client, "GET", TRF, {"destination_id": locations["b"].pk}).status_code == 403
         assert call(client, "GET", f"{TRF}999999/").status_code == 404
     assert call(wa, "GET", TRF, {"status": "completed"}).json()["count"] == 0
@@ -703,3 +705,22 @@ def test_same_key_from_two_users_receives_twice_with_distinct_operation_ids(
     ops = list(GoodsReceipt.objects.values_list("operation_id", flat=True))
     assert len(ops) == 2 and len(set(ops)) == 2
     assert bal(locations["wh"], items["x"]) == (2, 0)
+
+
+def test_every_stocked_item_has_a_cost_row_through_receipt_dispatch_and_receive(
+    users: dict[str, Any], locations: Any, items: dict[str, Item]
+) -> None:
+    """OQ-30 guard: stock enters only via a receipt, which creates the ItemCost row first; a dispatch only
+    moves existing stock, so the destination never holds an item without a cost row."""
+    wa = client_as(users["wa"])
+    receive_stock(wa, items["x"], 10, "20.00")
+    d = dispatch(wa, locations, [(items["x"], 4)], "a").json()
+    ok = call(
+        client_as(users["ba"]),
+        "POST",
+        f"{TRF}{d['id']}/receive/",
+        {"decision": "approve_all", "lines": lines_for(d, [4], [4])},
+    )
+    assert ok.status_code == 200
+    stocked = set(StockBalance.objects.values_list("item_id", flat=True))
+    assert stocked == {items["x"].pk} and ItemCost.objects.filter(item_id__in=stocked).count() == 1

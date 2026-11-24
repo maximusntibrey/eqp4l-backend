@@ -58,6 +58,8 @@ def _fold_average_cost(item: Item, quantity: int, unit_cost: Decimal) -> None:
     The ItemCost row is locked first, so two receipts of one item cannot both read the same old average.
     """
     row, created = ItemCost.objects.get_or_create(item=item, defaults={"average_cost": unit_cost})
+    # shortcut: no stock exists without an ItemCost row today (only receipts, seed_dev add stock);
+    # the CSV opening-stock import must create the cost row first, or fold stock held elsewhere (OQ-30).
     if created:
         return
     row = ItemCost.objects.select_for_update().get(pk=item.pk)

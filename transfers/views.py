@@ -1,7 +1,7 @@
 """Dispatch API (B5.2 to B5.4; PERMISSION_TABLE rows 28 to 31).
 
-Reads: SA and WA see every dispatch; BA and FS only those to their working branch (403 wrong_branch
-otherwise). Waiting (row 30): SA, BA, FS, never WA.
+Reads: SA and WA see every dispatch; BA and FS only those to their working branch (404 not_found
+otherwise, like a missing id). Waiting (row 30): SA, BA, FS, never WA.
 """
 
 from typing import Any, cast
@@ -227,7 +227,7 @@ class DispatchDetailView(APIView):
             raise ApiError(404, "not_found", "Not found.")
         own = visible_location(request, None)  # None for SA and WA; BA and FS: own branch only
         if own is not None and own != dispatch.destination_location_id:
-            raise ApiError(403, "wrong_branch", "You can only see dispatches to your own branch.")
+            raise ApiError(404, "not_found", "Not found.")  # same as a missing id: no leak (OQ-30)
         return Response(DispatchSerializer(dispatch).data)
 
 
