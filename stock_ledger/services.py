@@ -34,6 +34,7 @@ class StockChange:
     source_id: int
     source_line_id: int
     source_ref: str = ""
+    reverses_movement_id: int | None = None  # a reversal row links to the ledger row it compensates
 
 
 def _lock_balances(changes: Sequence[StockChange]) -> dict[tuple[int, int], StockBalance]:
@@ -129,6 +130,7 @@ def post_stock_changes(
                     actor_role=actor_role,
                     actor_location=actor_location,
                     note=note,
+                    reverses_movement_id=ch.reverses_movement_id,
                 )
             )
         for key, balance in balances.items():

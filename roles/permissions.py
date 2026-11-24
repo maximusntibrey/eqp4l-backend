@@ -38,6 +38,8 @@ ACTIONS = [
     "activity.view",
     "find.use",
     "dashboard.view",  # row 40: Home dashboard (SA, WA, BA)
+    "sales.cancel",  # row 39 (v0.4.2): SA, BA own branch
+    "items.import",  # rows 19, 20 (v0.4.2): SA, WA
 ]
 
 _EVERYONE = {
@@ -59,6 +61,7 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "goods_receipts.manage",
             "dispatches.create",
             "activity.view",  # row 41: warehouse activity (OQ-5)
+            "items.import",
             "dashboard.view",
         }
     ),
@@ -69,6 +72,7 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "dispatches.waiting",
             "dispatches.receive",
             "sales.record",
+            "sales.cancel",
             "activity.view",
             "dashboard.view",
         }  # own branch (OQ-5)

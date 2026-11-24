@@ -52,14 +52,15 @@ def active_items(lines: list[dict[str, Any]], verb: str) -> dict[int, Item]:
     return items
 
 
-def _fold_average_cost(item: Item, quantity: int, unit_cost: Decimal) -> None:
+def fold_average_cost(item: Item, quantity: int, unit_cost: Decimal) -> None:
     """Weighted average over everything on hand at every location (OQ-16), stored at 4 dp.
 
     The ItemCost row is locked first, so two receipts of one item cannot both read the same old average.
+    Receipts and the CSV opening-stock import both call this BEFORE posting the stock.
     """
     row, created = ItemCost.objects.get_or_create(item=item, defaults={"average_cost": unit_cost})
-    # shortcut: no stock exists without an ItemCost row today (only receipts, seed_dev add stock);
-    # the CSV opening-stock import must create the cost row first, or fold stock held elsewhere (OQ-30).
+    # shortcut: no stock exists without an ItemCost row today (receipts, the import and seed_dev all fold
+    # first); stock held with no cost row would be ignored here.
     if created:
         return
     row = ItemCost.objects.select_for_update().get(pk=item.pk)
@@ -104,7 +105,7 @@ def create_receipt(
             ]
         )
         for row in sorted(rows, key=lambda r: r.item_id):  # fixed lock order between concurrent receipts
-            _fold_average_cost(row.item, row.quantity, row.unit_cost)
+            fold_average_cost(row.item, row.quantity, row.unit_cost)
         post_stock_changes(
             [
                 StockChange(

@@ -47,9 +47,11 @@ EXPECTED: dict[str, set[str]] = {
     "activity.view": {SA, WA, BA},  # 41, 45
     "find.use": {SA, WA, BA, FS},  # 13, 22, 46
     "dashboard.view": {SA, WA, BA},  # 40 (FS has no Home tab)
+    "sales.cancel": {SA, BA},  # 39
+    "items.import": {SA, WA},  # 19, 20
 }
 MENUS = {
-    FS: ["Sell", "Find", "Stock", "Receive"],
+    FS: ["Sell", "Find", "Stock", "Receive", "Sales"],
     BA: ["Home", "Sell", "Find", "Stock", "Receive"],
     WA: ["Home", "Items", "Receive stock", "Dispatch", "Find"],
     SA: ["Home", "Items", "Warehouse", "Branches", "Users"],
@@ -57,7 +59,7 @@ MENUS = {
 
 
 def test_expected_matrix_covers_every_action() -> None:
-    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 20
+    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 22
 
 
 def test_effective_actions_match_the_permission_table_for_every_role(users: dict[str, Any]) -> None:
@@ -232,9 +234,9 @@ def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[st
     assert [m["label"] for m in body["menu"]] == MENUS[role] and len(body["menu"]) <= 5
     # OQ-23/OQ-25: Home tiles are kept out of the 5-item menu; WA and BA get an Activity tile
     assert [m["label"] for m in body["home_links"]] == {
-        SA: ["Activity", "Sell", "Find", "Receive"],
+        SA: ["Activity", "Sell", "Find", "Receive", "Sales"],  # menus of SA and BA are full: Sales is a tile
         WA: ["Activity"],
-        BA: ["Activity"],
+        BA: ["Activity", "Sales"],
         FS: [],
     }[role]
     assert ("activity.view" in body["permissions"]) == (role != FS)

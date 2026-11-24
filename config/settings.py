@@ -130,7 +130,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.3.2",
+    "VERSION": "0.4.2",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "RoleCodeEnum": "accounts.serializers.ROLE_CHOICES",
@@ -142,6 +142,7 @@ SPECTACULAR_SETTINGS = {
         "MovementTypeEnum": "stock_ledger.models.MovementType",
         "ConditionEnum": "inventory.models.Condition",
         "GradeEnum": "inventory.models.Grade",
+        "SaleStatusEnum": "sales.models.SaleStatus",
         "UserStatusTargetEnum": "accounts.user_views.STATUS_TARGETS",
     },
 }
