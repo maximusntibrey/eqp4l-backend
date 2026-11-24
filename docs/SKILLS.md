@@ -311,6 +311,7 @@ One register per repository. Record every tool, package and skill installed. Not
 | 2026-11-23 | backend | pg_dump / pg_restore (from postgres:16 image) | 16 | backup and scripted restore test, scripts/backup.sh and scripts/restore-test.sh (T.14) | backend-dev | official image; restore test run 2026-11-23 on the local DB, passed |
 | 2026-11-23 | backend | pre-commit config (ruff v0.17.6 hook + local secret-check script) | n/a | T.3 hooks | backend-dev | config only; the `pre-commit` tool itself is not installed yet |
 | 2026-11-24 | backend | (no new installs) | n/a | Day 3 B3 built with the existing pinned stack only | backend-dev | nothing added to requirements*.txt |
+| 2026-11-24 | backend | (no new installs) | n/a | Day 6 B6 (sales, find, CSV import, cancel) built with the existing pinned stack only (stdlib `csv`) | backend-dev | nothing added to requirements*.txt |
 
 ## Appendix B: Glossary
 

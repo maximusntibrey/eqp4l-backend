@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.3.2), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.4.2), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -8,6 +8,17 @@
 - Validated by `tests/test_openapi_contract.py` (schema validity, every path under `/api/v1/` or `/health/`, permission on every operation, Idempotency-Key on every state-changing operation except login, logout and password change, status enums match the SKILLS mapping, no cost field reachable by BA/FS).
 
 ## Changelog
+
+### 0.4.2 (2026-11-24, owner-approved; FQ-11)
+- `ActionPermission` gains `sales.cancel` (row 39: SA, BA) and `items.import` (rows 19, 20: SA, WA), so `/auth/me/` `permissions` tells the screens who may cancel and import. Sales entry (row 49): in `menu` for FS (5 items); in `home_links` for SA and BA, whose menus are already full. WA has no sales access.
+
+### 0.4.1 (2026-11-24, owner-approved; OQ-31)
+- New: `GET /costed-sales/` and `GET /costed-sales/{id}/` (SA only, table row 48): sale lines with `unit_cost` at 2 dp (the 4 dp snapshot rounded). Plain `/sales/` stays cost-free. New schema `CostedSale`.
+
+### 0.4.0 (2026-11-24, owner-approved, Day 6; additive only, TASKS OQ-31..33)
+- New: `GET/POST /sales/`, `GET /sales/{id}/`, `POST /sales/{id}/cancel/` (rows 36, 38, 39); `POST /item-imports/` (rows 19, 20, multipart, dry run). New schemas `Sale`, `SaleCreate`, `SaleCancel`, `SaleStatus`, `PaymentMethodCode`, `ItemImportRequest`, `ItemImportReport`; new tags `sales`, `imports`.
+- Find (B6.3) needs no new operation: `/items/?q=`, `/stock/` and `/items/{id}/branch-availability/` already cover it.
+- No published operation or schema changed. Sale payloads carry no cost (TASKS OQ-31).
 
 ### 0.3.2 (2026-11-24, owner-approved; OQ-30)
 

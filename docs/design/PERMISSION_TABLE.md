@@ -129,6 +129,8 @@ Effects per DEC: return to sender releases reserved; confirm loss releases reser
 | 37 | Override price or give a discount during a sale | N | N | N | N | Not before Sprint 6 (DEC); only with a grant even then. |
 | 38 | List sales for a branch | all | N | own branch | own branch, all its sales (OQ-10) | FE 4.10 |
 | 39 | Cancel a sale (reason required; reversal entry, original stays visible) | Y | N | Y (own branch) | N | OVR/BE s6, s13. Never an edit of the sale. |
+| 48 | See the cost snapshot on sale lines (`/costed-sales/`) | Y | N | N | N | Owner-approved 2026-11-24 (OQ-31). Cost is SA and WA only (row 14), but WA has no sales access (row 38), so SA only. Plain `/sales/` never carries cost. |
+| 49 | Sales entry (`sales.record`, list at `/sales`) | Y | N | Y | Y | Same as rows 36, 38. FS: nav item (menu has 5). SA and BA: Home tile, because their menus already hold 5 items. Actions `sales.cancel` (row 39: SA, BA) and `items.import` (rows 19, 20: SA, WA) are listed in `/me` `permissions` (contract 0.4.2). |
 
 ### 4.9 Dashboard and activity
 
