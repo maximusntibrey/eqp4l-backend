@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.1.2), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.3.0), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -8,6 +8,20 @@
 - Validated by `tests/test_openapi_contract.py` (schema validity, every path under `/api/v1/` or `/health/`, permission on every operation, Idempotency-Key on every state-changing operation except login, logout and password change, status enums match the SKILLS mapping, no cost field reachable by BA/FS).
 
 ## Changelog
+
+### 0.3.0 (2026-11-24, owner-approved; Day 4)
+
+- New read-only `GET /stock/movements/` (schemas `StockMovement`, `MovementType`): scoped like `/stock/`, newest first, filters `location_id`, `item_id`, `movement_type`, never carries cost.
+- `ItemWithCostAndWarnings` warning code `duplicate_sku` removed: an exact SKU clash (any case) is 409 `conflict` on field `sku`. `duplicate_name_model` stays.
+- `StockBalance` (and `StockBalanceWithCost`) gain `reorder_level` (nullable) and server-computed `low_stock` (reorder level set and available at or below it).
+- `condition` query filter on `/items/` and `/costed-items/`.
+- `400` documented on `/items/`, `/costed-items/`, `/stock/`, `/costed-stock/` list operations.
+- `PATCH /items/{id}/` `key_specs` replaces the whole object (documented, behaviour unchanged).
+- Selling-price permission is already in `/auth/me/` `permissions` as `prices.manage` (Super Admin, or a Manage prices holder).
+
+### 0.2.0 (2026-11-24, owner-approved; Day 4)
+
+- `/auth/me/` (and the working-branch response, same `Me` shape) gains required `all_branches` (true for Super Admin only).
 
 ### 0.1.2 (2026-11-24, owner-approved; published at the start of Day 3)
 - New generic error code `conflict` (409) for any clash (duplicate stock post, code or name already in use, self status change). The stock service now answers `conflict` for a duplicate post; `idempotency_conflict` stays for an Idempotency-Key reused with a different body.

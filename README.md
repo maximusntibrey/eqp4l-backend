@@ -24,6 +24,12 @@ docker compose run --rm web bash scripts/check.sh
 
 Runs ruff (lint and format), mypy with django-stubs, bandit, pip-audit, `makemigrations --check`, `check --deploy`, then pytest with coverage (min 90%). CI runs the same script against a PostgreSQL service (`.github/workflows/ci.yml`).
 
+## Deploy notes (host-agnostic)
+
+- Item image upload (`PUT /items/{id}/image/`): the app refuses files over 5 MB with 413 `file_too_large`, but only after the body arrives. Set the reverse proxy or host body limit to about 6 MB (nginx `client_max_body_size 6m`) so oversized bodies are stopped early and a 5 MB image plus multipart overhead still passes.
+- Uploaded images live under `MEDIA_ROOT` (env, default `./media`); give it a persistent disk or volume and serve `/media/` from the host (Django serves it only when DEBUG is on).
+- Images are stored as uploaded: EXIF metadata (for example GPS) is NOT stripped. Re-encoding would change the bytes and quality, so it is left to a later decision.
+
 ## Changelog
 
 - Contract 0.1.2 (not yet synced by the frontend), behaviour notes 2026-11-24, no schema change: `/me` `home_links` now has an Activity tile for Warehouse Admin and Branch Admin (OQ-25); the last active Super Admin cannot lose the role, be suspended or deactivated, answer 409 `conflict` (OQ-26); a Branch Admin's `/users/` list and detail also include Front Staff currently working at their branch (OQ-26).

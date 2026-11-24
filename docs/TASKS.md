@@ -284,11 +284,11 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [x] B3.3 User management API (auto ID, role, branch, deactivate, reset password, grant per-person permissions such as Receive stock)
 - [x] B3.4 Dashboard shell data
 - [x] B3.5 Tests: branch scoping and access
-- [ ] B4.1 Item API: common fields, key specs, draft or active, with item field definitions per category
-- [ ] B4.2 One image upload (type and size enforced)
-- [ ] B4.3 Stock balances and the movement log: one service for every stock change, atomic with row locks and idempotency keys. Required tests (FIX-1, FIX-2, FIX-9, see ERD s4): user B replaying user A's key never gets A's stored body; same key with another body returns 409 `idempotency_conflict`; sale line cost snapshot is 4 dp in the DB, 2 dp in the API, absent for BA/FS; the same csv_import batch row posted twice writes one ledger row.
-- [ ] B4.4 Stock query API
-- [ ] B4.5 Tests: validation rules, no negative stock, atomic stock service
+- [x] B4.1 Item API: common fields, key specs, draft or active, with item field definitions per category
+- [x] B4.2 One image upload (type and size enforced)
+- [x] B4.3 Stock balances and the movement log: one service for every stock change, atomic with row locks and idempotency keys. Required tests (FIX-1, FIX-2, FIX-9, see ERD s4): user B replaying user A's key never gets A's stored body; same key with another body returns 409 `idempotency_conflict`; sale line cost snapshot is 4 dp in the DB, 2 dp in the API, absent for BA/FS; the same csv_import batch row posted twice writes one ledger row.
+- [x] B4.4 Stock query API
+- [x] B4.5 Tests: validation rules, no negative stock, atomic stock service
 - [ ] B5.1 Warehouse receipt API (supplier name, items, quantities, cost; atomic with ledger; duplicate submissions blocked)
 - [ ] B5.2 Dispatch API (Warehouse Admin only; validates available stock; quantities go in transit)
 - [ ] B5.3 Branch receiving API (quantity per line, approve all, partial or reject; shortfall flagged)
@@ -704,6 +704,9 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 | 2026-11-24 | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
 | 2026-11-24 | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
 | 2026-11-24 | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
+| 2026-11-24 | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
+| 2026-11-24 | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
+| 2026-11-24 | Contract v0.3.0 approved: read-only /stock/movements/; `duplicate_sku` warning removed (SKU clash = 409 conflict on sku); key-spec lists in inventory/catalog.py confirmed (OQ-27); 400 on list-filter operations; StockBalance `reorder_level` + server-computed `low_stock` (available at or below the level); `condition` filter on items; PATCH key_specs replaces the whole object; selling-price permission is `prices.manage` in /me. | Owner |
 
 ## DEFERRALS
 
@@ -740,6 +743,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-24 | Client IP behind a proxy: the login and password rate limits key on `REMOTE_ADDR`/X-Forwarded-For handling; a trusted-proxy setting is needed once the host is known. | backend-dev, day-2 review finding 7, 2026-11-23 | BLOCKED by O1.1 (hosting) | |
 | OQ-25 | Where do Warehouse Admin and Branch Admin open the Activity log (row 41)? Docs place it only on the Super Admin Home; BA's nav already has 5 items and WA has no Home tile list. Built: `activity.view` for SA, WA, BA; only SA gets the Activity Home tile. | backend-dev, B3 (contract v0.1.2), 2026-11-24 | Decided (owner, 2026-11-24) | |
 | OQ-26 | User management edges not in the docs: (a) is Deactivated final (built: yes, only suspended can return to active, per OQ-14 "permanent")? (b) may a Super Admin remove their own Super Admin role or edit it away (built: allowed, no last-SA guard)? (c) BA "own branch" user list = users whose permanent location is that branch; Front Staff have none, so BA never sees FS (built literally per OQ-5). (d) reset password on a deactivated user is refused (409); `receive_stock` may be held only by Front Staff (table s3). | backend-dev, B3.3, 2026-11-24 | Decided (owner, 2026-11-24) | |
+| OQ-27 | MVP key-spec field lists (OQ-19 gave no list): built Laptop (processor, ram_gb, storage_gb, storage_type required to activate; screen size, touchscreen, OS, keyboard layout, colour optional), Laptop Part (quality_type required; compatible models, colour), Accessory (connectivity, colour, compatibility notes), all in `inventory/catalog.py`. Please confirm or send the real lists. | backend-dev, B4.1, 2026-11-24 | Approved as built (owner, 2026-11-24) | Owner |
+| OQ-28 | Contract says an exact duplicate SKU is a non-blocking `duplicate_sku` warning, but SKU is UNIQUE in the ERD. Built: a SKU clash (any case) is 409 `conflict` on field `sku`; only `duplicate_name_model` warnings are emitted. Also: no endpoint to READ the movement log exists in contract 0.2.0 (B4.3 builds the ledger and the stock service only). | backend-dev, B4.1/B4.3, 2026-11-24 | Approved (owner, 2026-11-24): SKU clash is 409 `conflict` on `sku`, `duplicate_sku` warning removed; read-only `/stock/movements/` added. Contract 0.3.0 | Owner |
 
 ## FIX LOG
 
@@ -788,3 +793,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-35 | "Front Staff working at their branch" (BA user list) requires the user's active role to be front_staff (an SA+FS user with a context branch is not listed). Accepted shortcut: a stale session keeps its stored branch until it ends (up to SESSION_COOKIE_AGE); recorded in the code comment. | backend | n/a | tests/test_users_api.py | | |
 | FIX-36 | Guard test for 409 "You cannot change your own status" with a second active SA present (the old test hit the last-SA message). | backend | n/a | tests/test_users_api.py | | |
 | FIX-37 | Note, behaviour unchanged: the one-time password can be shown again to the SAME actor replaying the SAME Idempotency-Key (needed for network retries). Rotating SECRET_KEY invalidates such replays. Noted in docs/design/ERD.md (idempotency). | backend | n/a | n/a | | |
+| FIX-38 | End-of-day review: the idempotency body hash used the uploaded file's name, so the same key and name with another image replayed instead of 409. Now hashes the file content. | backend | n/a | tests/test_items_api.py::test_same_key_and_file_name_but_different_image_bytes_is_409 | | |
+| FIX-39 | End-of-day review: two copies of one stock operation_id touching different items both posted (replay lookup ran after the balance locks). Now a `pg_advisory_xact_lock` on the operation_id is taken first; the second gets 409 `idempotency_conflict`. | backend | n/a | tests/test_stock_service.py::test_same_operation_id_on_different_items_posts_once | | |
+| FIX-40 | End-of-day review: an image file written before a failed transaction stayed on disk. The file is now deleted when the item save or audit fails. | backend | n/a | tests/test_items_api.py::test_a_failed_upload_leaves_no_file_behind | | |
+| FIX-41 | Documentation: README "Deploy notes" now gives the proxy body limit (~6 MB) for uploads, MEDIA_ROOT, and that EXIF is not stripped (decision deferred). | backend | n/a | n/a | | |
