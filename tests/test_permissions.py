@@ -43,6 +43,10 @@ EXPECTED: dict[str, set[str]] = {
     "dispatches.view": {SA, WA, BA, FS},  # 29
     "dispatches.waiting": {SA, BA, FS},  # 30
     "dispatches.receive": {SA, BA},  # 31 (FS only with the Receive stock grant)
+    "sales.record": {SA, BA, FS},  # 36, 44
+    "activity.view": {SA, WA, BA},  # 41, 45
+    "find.use": {SA, WA, BA, FS},  # 13, 22, 46
+    "dashboard.view": {SA, WA, BA},  # 40 (FS has no Home tab)
 }
 MENUS = {
     FS: ["Sell", "Find", "Stock", "Receive"],
@@ -53,7 +57,7 @@ MENUS = {
 
 
 def test_expected_matrix_covers_every_action() -> None:
-    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 16
+    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 20
 
 
 def test_effective_actions_match_the_permission_table_for_every_role(users: dict[str, Any]) -> None:
@@ -225,9 +229,21 @@ def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[st
     body = client.get("/api/v1/auth/me/").json()
     assert body["active_role"] == role and body["user"]["roles"] == [role]
     assert set(body["permissions"]) == {a for a in ACTIONS if role in EXPECTED[a]}
-    assert [m["label"] for m in body["menu"]] == MENUS[role]
-    assert len(body["menu"]) <= 5
-    assert all(set(m) == {"key", "label", "path"} and m["path"].startswith("/") for m in body["menu"])
+    assert [m["label"] for m in body["menu"]] == MENUS[role] and len(body["menu"]) <= 5
+    # OQ-23/OQ-25: Home tiles are kept out of the 5-item menu; WA and BA get an Activity tile
+    assert [m["label"] for m in body["home_links"]] == {
+        SA: ["Activity", "Sell", "Find", "Receive"],
+        WA: ["Activity"],
+        BA: ["Activity"],
+        FS: [],
+    }[role]
+    assert ("activity.view" in body["permissions"]) == (role != FS)
+    assert all(
+        set(m) == {"key", "label", "path"} and m["path"].startswith("/")
+        for m in body["menu"] + body["home_links"]
+    )
+    assert body["can_assign_multiple_roles"] is (role == SA)
+    assert body["must_pick_branch"] is (role == FS)  # FS has no branch yet; SA is never asked
     assert body["user"]["permissions"] == [] and body["must_change_password"] is False
     assert not any("cost" in k for k in body["user"])
 

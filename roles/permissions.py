@@ -34,9 +34,14 @@ ACTIONS = [
     "dispatches.view",
     "dispatches.waiting",
     "dispatches.receive",
+    "sales.record",  # OQ-23 (v0.1.2): menu actions for Sell, Activity, Find; Receive is dispatches.receive
+    "activity.view",
+    "find.use",
+    "dashboard.view",  # row 40: Home dashboard (SA, WA, BA)
 ]
 
 _EVERYONE = {
+    "find.use",  # rows 13, 22
     "branches.view",
     "items.view",
     "stock.view",
@@ -53,12 +58,22 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "items.view_cost",
             "goods_receipts.manage",
             "dispatches.create",
+            "activity.view",  # row 41: warehouse activity (OQ-5)
+            "dashboard.view",
         }
     ),
     c.BRANCH_ADMIN: frozenset(
-        _EVERYONE | {"users.view", "dispatches.waiting", "dispatches.receive"}  # own branch (OQ-5)
+        _EVERYONE
+        | {
+            "users.view",
+            "dispatches.waiting",
+            "dispatches.receive",
+            "sales.record",
+            "activity.view",
+            "dashboard.view",
+        }  # own branch (OQ-5)
     ),
-    c.FRONT_STAFF: frozenset(_EVERYONE | {"working_branch.select", "dispatches.waiting"}),
+    c.FRONT_STAFF: frozenset(_EVERYONE | {"working_branch.select", "dispatches.waiting", "sales.record"}),
 }
 # Per-person grants (section 3). Discount has no MVP action (Sprint 6).
 GRANT_ACTIONS = {c.RECEIVE_STOCK: "dispatches.receive", c.MANAGE_PRICES: "prices.manage"}
@@ -76,7 +91,12 @@ def effective_actions(user: User, role: str | None = None) -> list[str]:
     """Actions the user may perform in the active role, in contract order."""
     role = role or active_role(user)
     allowed = set(ROLE_ACTIONS.get(role or "", frozenset()))
-    allowed |= {GRANT_ACTIONS[g] for g in active_grants(user) if g in GRANT_ACTIONS}
+    # s3: Receive stock is Front Staff only, so a stale grant on another role adds nothing
+    allowed |= {
+        GRANT_ACTIONS[g]
+        for g in active_grants(user)
+        if g in GRANT_ACTIONS and (g != c.RECEIVE_STOCK or role == c.FRONT_STAFF)
+    }
     return [a for a in ACTIONS if a in allowed]
 
 

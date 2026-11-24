@@ -79,6 +79,7 @@ def create_user(
     role_codes: list[str],
     permanent_location: Location | None = None,
     actor: User | None = None,
+    one_time_password: str | None = None,
 ) -> tuple[User, str]:
     """Create an account with a generated login ID and a one-time password (returned, never stored plain).
 
@@ -93,7 +94,7 @@ def create_user(
         raise ApiError(400, "validation_error", "Enter a full name of up to 150 characters.", "full_name")
     codes = list(dict.fromkeys(role_codes))
     _validate_location(codes, permanent_location)
-    one_time = generate_one_time_password()
+    one_time = one_time_password or generate_one_time_password()
     with transaction.atomic():
         user = User(
             login_id=next_login_id("SA" if c.SUPER_ADMIN in codes else "USR"),

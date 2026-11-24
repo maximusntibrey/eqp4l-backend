@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 
 from django.contrib.auth.models import AnonymousUser
+from django.db import transaction
 
 from accounts.models import User
 from config.errors import ApiError
@@ -49,3 +50,11 @@ def assign_roles(user: User, codes: Iterable[str], actor: User | None) -> None:
     roles = {r.code: r for r in Role.objects.filter(code__in=wanted)}
     for code in wanted:
         UserRole.objects.get_or_create(user=user, role=roles[code], defaults={"assigned_by": actor})
+
+
+def replace_roles(user: User, codes: Iterable[str], actor: User) -> None:
+    """Make `codes` the user's whole role set (B3.3). Super Admin only; the caller writes the audit event."""
+    wanted = list(dict.fromkeys(codes))
+    with transaction.atomic():
+        UserRole.objects.filter(user=user).exclude(role__code__in=wanted).delete()
+        assign_roles(user, wanted, actor)
