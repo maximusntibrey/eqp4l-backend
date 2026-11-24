@@ -289,12 +289,12 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [x] B4.3 Stock balances and the movement log: one service for every stock change, atomic with row locks and idempotency keys. Required tests (FIX-1, FIX-2, FIX-9, see ERD s4): user B replaying user A's key never gets A's stored body; same key with another body returns 409 `idempotency_conflict`; sale line cost snapshot is 4 dp in the DB, 2 dp in the API, absent for BA/FS; the same csv_import batch row posted twice writes one ledger row.
 - [x] B4.4 Stock query API
 - [x] B4.5 Tests: validation rules, no negative stock, atomic stock service
-- [ ] B5.1 Warehouse receipt API (supplier name, items, quantities, cost; atomic with ledger; duplicate submissions blocked)
-- [ ] B5.2 Dispatch API (Warehouse Admin only; validates available stock; quantities go in transit)
-- [ ] B5.3 Branch receiving API (quantity per line, approve all, partial or reject; shortfall flagged)
-- [ ] B5.4 Queries for what is waiting at each branch
-- [ ] B5.5 Tests: receipt atomicity, dispatch permissions, partial receiving
-- [ ] B5.6 Sprint 1 review, fixes and publish the updated OpenAPI contract
+- [x] B5.1 Warehouse receipt API (supplier name, items, quantities, cost; atomic with ledger; duplicate submissions blocked)
+- [x] B5.2 Dispatch API (Warehouse Admin only; validates available stock; quantities go in transit)
+- [x] B5.3 Branch receiving API (quantity per line, approve all, partial or reject; shortfall flagged)
+- [x] B5.4 Queries for what is waiting at each branch
+- [x] B5.5 Tests: receipt atomicity, dispatch permissions, partial receiving
+- [x] B5.6 Sprint 1 review, fixes and publish the updated OpenAPI contract
 
 ### Frontend, Sprint 1
 
@@ -707,6 +707,7 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 | 2026-11-24 | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
 | 2026-11-24 | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
 | 2026-11-24 | Contract v0.3.0 approved: read-only /stock/movements/; `duplicate_sku` warning removed (SKU clash = 409 conflict on sku); key-spec lists in inventory/catalog.py confirmed (OQ-27); 400 on list-filter operations; StockBalance `reorder_level` + server-computed `low_stock` (available at or below the level); `condition` filter on items; PATCH key_specs replaces the whole object; selling-price permission is `prices.manage` in /me. | Owner |
+| 2026-11-24 | Contract v0.3.1 approved (owner): `GET /dispatches/` documents 400 and 403 `wrong_branch`; dispatch stays WA and SA (table row 28); OQ-29 approved as proposed (reject stores received = sent, accepted 0; approve_partial without shortfall allowed; supplier name column 200). | owner |
 
 ## DEFERRALS
 
@@ -745,6 +746,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-26 | User management edges not in the docs: (a) is Deactivated final (built: yes, only suspended can return to active, per OQ-14 "permanent")? (b) may a Super Admin remove their own Super Admin role or edit it away (built: allowed, no last-SA guard)? (c) BA "own branch" user list = users whose permanent location is that branch; Front Staff have none, so BA never sees FS (built literally per OQ-5). (d) reset password on a deactivated user is refused (409); `receive_stock` may be held only by Front Staff (table s3). | backend-dev, B3.3, 2026-11-24 | Decided (owner, 2026-11-24) | |
 | OQ-27 | MVP key-spec field lists (OQ-19 gave no list): built Laptop (processor, ram_gb, storage_gb, storage_type required to activate; screen size, touchscreen, OS, keyboard layout, colour optional), Laptop Part (quality_type required; compatible models, colour), Accessory (connectivity, colour, compatibility notes), all in `inventory/catalog.py`. Please confirm or send the real lists. | backend-dev, B4.1, 2026-11-24 | Approved as built (owner, 2026-11-24) | Owner |
 | OQ-28 | Contract says an exact duplicate SKU is a non-blocking `duplicate_sku` warning, but SKU is UNIQUE in the ERD. Built: a SKU clash (any case) is 409 `conflict` on field `sku`; only `duplicate_name_model` warnings are emitted. Also: no endpoint to READ the movement log exists in contract 0.2.0 (B4.3 builds the ledger and the stock service only). | backend-dev, B4.1/B4.3, 2026-11-24 | Approved (owner, 2026-11-24): SKU clash is 409 `conflict` on `sku`, `duplicate_sku` warning removed; read-only `/stock/movements/` added. Contract 0.3.0 | Owner |
+| OQ-29 | Receiving edge cases the docs do not fix. Built: (a) `approve_partial` with no shortfall is accepted (status `partially_received`, no discrepancy); (b) a `reject` stores qty_received = qty_sent, qty_accepted 0, qty_rejected = qty_sent (goods arrived but refused; everything stays reserved at the sender); (c) `has_open_discrepancy` = any line with shortfall greater than the sum of its resolutions; (d) GRN supplier name column widened 150 to 200 to match the contract (migration warehouse 0002); (e) dispatch list contract 0.3.0 documents only 200/401 but BA/FS get 403 `wrong_branch` and a bad `status` is 400 (additive doc fix proposed for the next contract version); (f) SA also holds `dispatches.create` per table row 28 (WA and SA). | backend-dev, B5.1-B5.4, 2026-11-24 | Approved (owner, 2026-11-24) | Owner |
+| OQ-30 | Open notes from the Day 5 review (no code): (a) `warehouse/services.py` creates a new ItemCost from the receipt cost alone and ignores stock already at other locations; re-check at the CSV opening-stock step. (b) A dispatch outside the caller's branch returns 403 `wrong_branch`, while a nonexistent id returns 404; the owner may prefer 404 for both. Day 5 review tests added (no bugs found): average restarts at the new cost after stock hits 0; same Idempotency-Key from two users gives two receipts with distinct operation_ids. | backend-dev, B5.6 review, 2026-11-24 | Open | Owner |
 
 ## FIX LOG
 
