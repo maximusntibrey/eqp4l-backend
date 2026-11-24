@@ -310,6 +310,7 @@ One register per repository. Record every tool, package and skill installed. Not
 | 2026-11-23 | backend | postgres:16 (Docker) | 16 | local database via Compose | backend-dev | official Docker image |
 | 2026-11-23 | backend | pg_dump / pg_restore (from postgres:16 image) | 16 | backup and scripted restore test, scripts/backup.sh and scripts/restore-test.sh (T.14) | backend-dev | official image; restore test run 2026-11-23 on the local DB, passed |
 | 2026-11-23 | backend | pre-commit config (ruff v0.17.6 hook + local secret-check script) | n/a | T.3 hooks | backend-dev | config only; the `pre-commit` tool itself is not installed yet |
+| 2026-11-24 | backend | (no new installs) | n/a | Day 3 B3 built with the existing pinned stack only | backend-dev | nothing added to requirements*.txt |
 
 ## Appendix B: Glossary
 
@@ -382,3 +383,9 @@ All critical gaps were decided by the owner on 2026-11-18 and development is aut
 | 2026-11-23 | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
 | 2026-11-23 | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
 | 2026-11-23 | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
+| 2026-11-24 | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
+| 2026-11-24 | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
+| 2026-11-24 | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
+| 2026-11-24 | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
+| 2026-11-24 | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
+| 2026-11-24 | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |

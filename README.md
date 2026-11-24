@@ -24,6 +24,10 @@ docker compose run --rm web bash scripts/check.sh
 
 Runs ruff (lint and format), mypy with django-stubs, bandit, pip-audit, `makemigrations --check`, `check --deploy`, then pytest with coverage (min 90%). CI runs the same script against a PostgreSQL service (`.github/workflows/ci.yml`).
 
+## Changelog
+
+- Contract 0.1.2 (not yet synced by the frontend), behaviour notes 2026-11-24, no schema change: `/me` `home_links` now has an Activity tile for Warehouse Admin and Branch Admin (OQ-25); the last active Super Admin cannot lose the role, be suspended or deactivated, answer 409 `conflict` (OQ-26); a Branch Admin's `/users/` list and detail also include Front Staff currently working at their branch (OQ-26).
+
 ## Dependencies
 
 Pinned with pip-tools: edit `requirements.in` / `requirements-dev.in`, then `docker compose run --rm web bash scripts/compile-requirements.sh`. Every package is recorded in `docs/SKILLS.md` Appendix A.

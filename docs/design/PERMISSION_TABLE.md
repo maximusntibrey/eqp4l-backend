@@ -27,6 +27,7 @@ One account per person. Only SA can assign more than one role (role switching is
 2. FS pick any active branch after login; every request then uses it; each switch is logged. (BE s2, OVR 1)
 3. BA and WA have one permanent location. Temporary access elsewhere needs an approved request (BE s2). **That request flow is Sprint 5**, so in the MVP BA and WA cannot act outside their location. (BE s12)
 4. SA acts in every location. Each action is recorded under the SA's own ID with the role and branch used. (BE s2)
+   Owner decision 2026-11-24: the SA is never asked to pick a branch at login. SA lists, users and the dashboard show all branches by default, with an optional `?branch=<id>` filter to view one; every action available to SA works on any branch, and an action on a record uses that record's location (OQ-12). The server returns `must_pick_branch` true only when the role requires a working branch and none is chosen (FS); it is always false for SA.
 5. **Cross-branch lookup exception:** any logged-in user sees other branches' available quantity for a selected item, as branch name and quantity only. No prices, costs, customers or sales. (BE s2, OVR 2)
 6. Only active users and active branches can act; deactivated records keep their history. (BE s2)
 7. Cost price is never returned for BA or FS (not hidden in the screen, not serialised). (OVR 7, TASKS 0.3)
@@ -50,13 +51,13 @@ Rules: only SA grants or revokes them; every grant and revoke is an audit event;
 | 1 | Log in, log out | Y | Y | Y | Y | Login ID plus password; rate limited; every login and failure is logged. BE s11, s9 |
 | 2 | Change own password | Y | Y | Y | Y | DEC C5 |
 | 3 | Forced password change at first login after create or reset | Y | Y | Y | Y | DEC C5 |
-| 4 | Create user, edit, activate, deactivate, suspend | Y | N | N | N | OVR 2, BE s2. Suspend = temporary, reversible; deactivate = permanent, history kept; both end sessions at once (OQ-14) |
+| 4 | Create user, edit, activate, deactivate, suspend | Y | N | N | N | OVR 2, BE s2. Suspend = temporary, reversible; deactivate = permanent, history kept; both end sessions at once (OQ-14). The last active Super Admin cannot lose the role, be suspended or deactivated (OQ-26) |
 | 5 | Reset a user's password (one-time password shown once) | Y | N | N | N | DEC C5 |
 | 6 | Assign a role and a permanent branch | Y | N | N | N | BE s2 |
 | 7 | Assign more than one role | Y | N | N | N | BE s2 (switching itself is Sprint 5) |
 | 8 | Grant or revoke per-person permissions | Y | N | N | N | OVR 15 |
-| 9 | View user list, last login, session history | Y | warehouse | own branch | N | BE s2. WA and BA see their own location only (OQ-5) |
-| 10 | Pick or switch working branch | Y | N | N | Y | FS any active branch; BA and WA have a fixed location. SA may optionally pick a context branch; actions on a record use that record's location (OQ-12). BE s2 |
+| 9 | View user list, last login, session history | Y | warehouse | own branch | N | BE s2. WA and BA see their own location only (OQ-5); BA also sees Front Staff currently working at their branch (OQ-26) |
+| 10 | Pick or switch working branch | Y | N | N | Y | FS any active branch (must pick before working: `must_pick_branch`); BA and WA have a fixed location. SA is never asked; SA may optionally pick a context branch and works across all branches; actions on a record use that record's location (OQ-12). BE s2 |
 
 ### 4.2 Branches
 
@@ -136,6 +137,17 @@ Effects per DEC: return to sender releases reserved; confirm loss releases reser
 | 40 | Dashboard data (stock, in transit, low stock, recent activity) | all | warehouse | own branch | N (FS has no Home tab, FE s3) | Scoped to role and branch. BE s8 |
 | 41 | Activity log list (filter user, branch, action, date) | Y | warehouse | own branch | N | WA warehouse activity, BA own branch activity (OQ-5) |
 | 42 | Edit or delete an audit event or ledger row | N | N | N | N | Append-only for everyone, including SA. BE s9 |
+
+### 4.10 Menu entries and Home links (OQ-23, owner-approved 2026-11-24)
+
+Each entry is shown only to a role that holds the row it points to. Super Admin opens these four from Home (FE s3): the server returns them as `/me` `home_links`, separate from the max-5 `menu`, so they never take a nav slot. `/me` `can_assign_multiple_roles` is true only for SA (row 7).
+
+| # | Action | SA | WA | BA | FS | Notes and source |
+|---|---|---|---|---|---|---|
+| 44 | Sell entry (`sales.record`) | Y | N | Y | Y | Same as row 36. SA: Home link (FE s3). BA, FS: existing nav item. |
+| 45 | Activity entry (`activity.view`) | Y | warehouse | own branch | N | Same as row 41. SA, WA, BA: Home link "Activity" (FE s3; WA and BA see only their own location, OQ-25 decided 2026-11-24). |
+| 46 | Find entry (`find.use`) | Y | Y | Y | Y | Rows 13 and 22. SA: Home link (FE s3). Others: existing nav item. |
+| 47 | Receive entry (`dispatches.receive`) | Y | N | Y | Grant | Same as row 31. SA: Home link (FE s3). BA, FS: existing nav item. |
 
 ## 5. Self-approval rules
 

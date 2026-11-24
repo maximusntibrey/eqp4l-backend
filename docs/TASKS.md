@@ -279,11 +279,11 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 - [x] B2.4 Permission checks by role and branch (only SuperAdmins can assign multiple roles)
 - [x] B2.5 Seed data: `SA-0001`, 3 branches, sample items with stock
 - [x] B2.6 Tests: IDs, login, permissions
-- [ ] B3.1 Working-branch selection and switching endpoints (every switch logged; requests scoped to the chosen branch)
-- [ ] B3.2 Branch management API (create, edit, deactivate)
-- [ ] B3.3 User management API (auto ID, role, branch, deactivate, reset password, grant per-person permissions such as Receive stock)
-- [ ] B3.4 Dashboard shell data
-- [ ] B3.5 Tests: branch scoping and access
+- [x] B3.1 Working-branch selection and switching endpoints (every switch logged; requests scoped to the chosen branch)
+- [x] B3.2 Branch management API (create, edit, deactivate)
+- [x] B3.3 User management API (auto ID, role, branch, deactivate, reset password, grant per-person permissions such as Receive stock)
+- [x] B3.4 Dashboard shell data
+- [x] B3.5 Tests: branch scoping and access
 - [ ] B4.1 Item API: common fields, key specs, draft or active, with item field definitions per category
 - [ ] B4.2 One image upload (type and size enforced)
 - [ ] B4.3 Stock balances and the movement log: one service for every stock change, atomic with row locks and idempotency keys. Required tests (FIX-1, FIX-2, FIX-9, see ERD s4): user B replaying user A's key never gets A's stored body; same key with another body returns 409 `idempotency_conflict`; sale line cost snapshot is 4 dp in the DB, 2 dp in the API, absent for BA/FS; the same csv_import batch row posted twice writes one ledger row.
@@ -698,6 +698,12 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 | 2026-11-23 | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
 | 2026-11-23 | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
 | 2026-11-23 | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
+| 2026-11-24 | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
+| 2026-11-24 | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
+| 2026-11-24 | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
+| 2026-11-24 | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
+| 2026-11-24 | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
+| 2026-11-24 | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
 
 ## DEFERRALS
 
@@ -732,6 +738,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-21 | Selling price on item create/edit: contract lets only SA or a Manage prices holder send `selling_price` (row 16); WA without the grant gets 403 on that field. Confirm, and say if an item may be activated without a price. | backend-dev, B1.3, 2026-11-23 | Approved (owner, 2026-11-23): confirmed; activation needs no price, sale blocked until a price exists; in contract v0.1.1 | |
 | OQ-22 | FIX-5 added account status `pending_activation` but not its meaning. When does an account have it, and which targets may `POST /users/{id}/status/` accept? Proposed: a user created by SA is `pending_activation` until the first password change, then `active`; the status endpoint accepts `active`, `suspended`, `deactivated` only (as written in contract v0.1.1). | backend-dev, contract v0.1.1, 2026-11-23 | Approved (owner, 2026-11-23) | |
 | OQ-24 | Client IP behind a proxy: the login and password rate limits key on `REMOTE_ADDR`/X-Forwarded-For handling; a trusted-proxy setting is needed once the host is known. | backend-dev, day-2 review finding 7, 2026-11-23 | BLOCKED by O1.1 (hosting) | |
+| OQ-25 | Where do Warehouse Admin and Branch Admin open the Activity log (row 41)? Docs place it only on the Super Admin Home; BA's nav already has 5 items and WA has no Home tile list. Built: `activity.view` for SA, WA, BA; only SA gets the Activity Home tile. | backend-dev, B3 (contract v0.1.2), 2026-11-24 | Decided (owner, 2026-11-24) | |
+| OQ-26 | User management edges not in the docs: (a) is Deactivated final (built: yes, only suspended can return to active, per OQ-14 "permanent")? (b) may a Super Admin remove their own Super Admin role or edit it away (built: allowed, no last-SA guard)? (c) BA "own branch" user list = users whose permanent location is that branch; Front Staff have none, so BA never sees FS (built literally per OQ-5). (d) reset password on a deactivated user is refused (409); `receive_stock` may be held only by Front Staff (table s3). | backend-dev, B3.3, 2026-11-24 | Decided (owner, 2026-11-24) | |
 
 ## FIX LOG
 
@@ -763,9 +771,20 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-24 | (number kept for the brief's finding 7) Trusted-proxy client IP deferred, see OQ-24 (blocked by O1.1). | backend | n/a | n/a | | |
 | FIX-25 | TRUNCATE trigger on `accounts_loginidsequence` (new migration accounts 0005; 0004 already applied to the dev DB); ERD.md table-name note added; test conftest flush also disables it. | backend | n/a | tests/test_ids.py | | |
 | FIX-26 | Comments fixed: `.env.example` dev seed users (active, no forced change, local only); `roles/models.py`, `sales/models.py` seeding is post_migrate in `config/reference_data.py`. | backend | n/a | n/a | | |
+| FIX-27 | Contract v0.1.2 (owner-approved 2026-11-24): generic `conflict` 409 code; stock service duplicate post now answers `conflict` (was `idempotency_conflict`, FIX-21); 429 on /auth/password/; OQ-23 codes and `/me` `home_links`, `can_assign_multiple_roles`, `must_pick_branch`; SA `?branch=` view filter; dashboard 403 for FS (row 40). | backend | n/a | tests/test_stock_service.py, tests/test_openapi_contract.py, tests/test_b3_matrix.py | | |
+| FIX-28 | OQ-26 last-Super-Admin guard: removing the SA role from, suspending or deactivating the last active SA (also the actor) is 409 `conflict` with a plain message; active SA rows locked. | backend | n/a | tests/test_users_api.py | | |
+| FIX-29 | OQ-26 Branch Admin user list and detail: own permanent-branch users plus Front Staff whose live session working branch is theirs; nobody else (404). | backend | n/a | tests/test_users_api.py | | |
+| FIX-30 | OQ-25 home_links: Warehouse Admin and Branch Admin get an Activity tile (activity.view, own location). PERMISSION_TABLE rows 4, 9, 45 updated. | backend | n/a | tests/test_permissions.py | | |
+| FIX-31 | OQ-26 deactivated is final and reset refused for deactivated: confirmed covered. No contract shape change (v0.1.2 kept). | backend | n/a | tests/test_users_api.py (existing) | | |
 
 ## DEPLOYMENT LOG
 
 | Version | Environment | Backup verified | Migrations run | Smoke tests passed | Rollback ready | Approved by owner |
 |---|---|---|---|---|---|---|
 | (first entry goes here) | | | | | | |
+| FIX-32 | BLOCKER: Receive stock is Front Staff only (s3). Removing front_staff from a user revokes an active receive_stock grant in the same transaction (audit `permission_revoked`, reason "role change"); `effective_actions` adds dispatches.receive from the grant only when the active role is front_staff. | backend | n/a | tests/test_users_api.py | | |
+| FIX-33 | BLOCKER: last-SA guard deadlock. Target plus all active Super Admin rows are locked in one query (order by pk, `select_for_update(of=("self",))`) before any other lock, in status and role-change paths. Threaded test: two SAs suspend each other, one 200 and one 409, one active SA left. (Guard test: the old code passed it by timing in one run; the ordering fix is by construction.) | backend | n/a | tests/test_users_api.py | | |
+| FIX-34 | Sentry init no longer sends local variables or PII. The requested `include_local_variables=False, send_default_pii=False` raise `TypeError: Unknown option` in the pinned sentry-sdk 3.0.0 (would crash startup when a DSN is set), so `data_collection={user_info: False, stack_frame_variables: False, cookies: off, http_bodies: []}` is used. Test also runs a real init. | backend | n/a | tests/test_settings.py | | |
+| FIX-35 | "Front Staff working at their branch" (BA user list) requires the user's active role to be front_staff (an SA+FS user with a context branch is not listed). Accepted shortcut: a stale session keeps its stored branch until it ends (up to SESSION_COOKIE_AGE); recorded in the code comment. | backend | n/a | tests/test_users_api.py | | |
+| FIX-36 | Guard test for 409 "You cannot change your own status" with a second active SA present (the old test hit the last-SA message). | backend | n/a | tests/test_users_api.py | | |
+| FIX-37 | Note, behaviour unchanged: the one-time password can be shown again to the SAME actor replaying the SAME Idempotency-Key (needed for network retries). Rotating SECRET_KEY invalidates such replays. Noted in docs/design/ERD.md (idempotency). | backend | n/a | n/a | | |
