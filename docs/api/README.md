@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.3.1), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.3.2), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -8,6 +8,10 @@
 - Validated by `tests/test_openapi_contract.py` (schema validity, every path under `/api/v1/` or `/health/`, permission on every operation, Idempotency-Key on every state-changing operation except login, logout and password change, status enums match the SKILLS mapping, no cost field reachable by BA/FS).
 
 ## Changelog
+
+### 0.3.2 (2026-11-24, owner-approved; OQ-30)
+
+- `GET /dispatches/{id}/` and `POST /dispatches/{id}/receive/`: a dispatch to another branch is `404 not_found`, identical to a nonexistent id (no `403 wrong_branch` leak). `403` remains for roles or grants that may not read or receive. List behaviour unchanged.
 
 ### 0.3.1 (2026-11-24, owner-approved; Day 5)
 
