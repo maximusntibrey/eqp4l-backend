@@ -155,3 +155,11 @@ def test_must_pick_branch_flag_per_role_and_login(users: dict[str, Any], locatio
     login_body = client_as(users["sa"]).get("/api/v1/auth/me/").json()
     assert login_body["can_assign_multiple_roles"] is True
     assert me("fs")["can_assign_multiple_roles"] is False and me("ba")["can_assign_multiple_roles"] is False
+
+
+def test_all_branches_flag_only_for_super_admin(users: dict[str, Any]) -> None:
+    flags = {
+        k: client_as(users[k]).get("/api/v1/auth/me/").json()["all_branches"]
+        for k in ("sa", "wa", "ba", "fs")
+    }
+    assert flags == {"sa": True, "wa": False, "ba": False, "fs": False}

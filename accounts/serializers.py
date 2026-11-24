@@ -69,6 +69,7 @@ class MeSerializer(serializers.Serializer[object]):
     active_role = serializers.ChoiceField(choices=ROLE_CHOICES)
     working_branch = BranchSerializer(allow_null=True)
     must_pick_branch = serializers.BooleanField()
+    all_branches = serializers.BooleanField()
     can_assign_multiple_roles = serializers.BooleanField()
     must_change_password = serializers.BooleanField()
     permissions = serializers.ListField(child=serializers.ChoiceField(choices=[(a, a) for a in ACTIONS]))

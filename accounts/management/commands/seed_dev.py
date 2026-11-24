@@ -18,7 +18,17 @@ from django.db import transaction
 from accounts.models import User, UserStatus
 from accounts.services import create_user
 from branches.models import Location, LocationKind
-from inventory.models import Brand, Category, Condition, ImportBatch, Item, ItemCost, ItemPrice, ItemStatus
+from inventory.models import (
+    Brand,
+    Category,
+    Condition,
+    ImportBatch,
+    Item,
+    ItemCost,
+    ItemPrice,
+    ItemStatus,
+    Subtype,
+)
 from roles import constants as c
 from stock_ledger.models import Bucket, MovementType, SourceType
 from stock_ledger.services import StockChange, post_stock_changes
@@ -133,7 +143,10 @@ class Command(BaseCommand):
                 defaults={
                     "name": name,
                     "category": Category.objects.get(name=category),
+                    "subtype": Subtype.objects.filter(category__name=category).order_by("id").first(),
                     "brand": brands[brand],
+                    "model_name": name,
+                    "mpn": sku,
                     "condition": condition,
                     "status": ItemStatus.ACTIVE,
                 },

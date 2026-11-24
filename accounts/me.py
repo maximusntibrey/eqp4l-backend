@@ -47,6 +47,7 @@ def build_me(request: HttpRequest, user: User) -> dict[str, Any]:
         "working_branch": branch,
         # Only Front Staff must choose; SA works across all branches and BA/WA have a fixed location.
         "must_pick_branch": role == c.FRONT_STAFF and branch is None,
+        "all_branches": role == c.SUPER_ADMIN,
         "can_assign_multiple_roles": role == c.SUPER_ADMIN,
         "must_change_password": user.must_change_password,
         "permissions": effective_actions(user, role),

@@ -9,8 +9,9 @@ idempotency-key lookup on this same entry point; nothing else may touch balances
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 
 from accounts.models import User
 from audit.services import record_event
@@ -46,6 +47,17 @@ def _lock_balances(changes: Sequence[StockChange]) -> dict[tuple[int, int], Stoc
     return locked
 
 
+def _signature(rows: Sequence[Any]) -> list[tuple[Any, ...]]:
+    """What an operation did, comparable between requested changes and stored ledger rows."""
+
+    def key(r: Any) -> tuple[Any, ...]:
+        loc, item = (r.location.pk, r.item.pk) if isinstance(r, StockChange) else (r.location_id, r.item_id)
+        delta = r.delta if isinstance(r, StockChange) else r.quantity_delta
+        return (loc, item, r.bucket, delta, r.movement_type, r.source_type, r.source_id, r.source_line_id)
+
+    return sorted(key(r) for r in rows)
+
+
 def post_stock_changes(
     changes: Sequence[StockChange],
     *,
@@ -61,14 +73,32 @@ def post_stock_changes(
     Rules: no bucket goes negative and reserved never exceeds on_hand (409 insufficient_stock naming the
     item and location); a source line can never post twice (409 conflict).
     Audit event: `audit_action`.
+
+    Idempotency: pass the operation's `operation_id` (derived from the request's Idempotency-Key). Posting the
+    same operation again with the same changes returns the stored rows and writes nothing; the same id with
+    different changes is 409 `idempotency_conflict`. The lookup runs under the balance locks, so two
+    concurrent copies cannot both post.
     """
     if not changes:
         raise ApiError(400, "validation_error", "Nothing to post.")
     if any(ch.delta == 0 or ch.bucket not in Bucket.values for ch in changes):
         raise ApiError(400, "validation_error", "Each stock change needs a bucket and a non-zero quantity.")
+    replayable = operation_id is not None
     operation_id = operation_id or uuid.uuid4()
     with transaction.atomic():
+        if replayable:
+            # Serialise copies of one operation even when they touch different balance rows.
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", [str(operation_id)])
         balances = _lock_balances(changes)
+        if replayable:
+            stored = list(StockMovement.objects.filter(operation_id=operation_id).order_by("id"))
+            if stored:
+                if _signature(stored) != _signature(changes):
+                    raise ApiError(
+                        409, "idempotency_conflict", "This operation ID was already used for other changes."
+                    )
+                return stored
         rows: list[StockMovement] = []
         for ch in changes:
             balance = balances[(ch.location.pk, ch.item.pk)]

@@ -84,6 +84,10 @@ CURRENCY = "GHS"
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path(
+    env.str("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+)  # item images; the host picks the disk
 
 # Secure sessions and cookies; defaults are strict whenever DEBUG is off.
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
@@ -126,13 +130,18 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.1.2",
+    "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "RoleCodeEnum": "accounts.serializers.ROLE_CHOICES",
         "ActionPermissionEnum": "roles.permissions.ACTIONS",
         "PersonPermissionEnum": "roles.constants.PERSON_PERMISSIONS",
         "UserStatusEnum": "accounts.models.UserStatus",
+        "ItemStatusEnum": "inventory.models.ItemStatus",
+        "ItemStatusTargetEnum": "inventory.serializers.STATUS_TARGETS",
+        "MovementTypeEnum": "stock_ledger.models.MovementType",
+        "ConditionEnum": "inventory.models.Condition",
+        "GradeEnum": "inventory.models.Grade",
         "UserStatusTargetEnum": "accounts.user_views.STATUS_TARGETS",
     },
 }

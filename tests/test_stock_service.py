@@ -153,3 +153,81 @@ def test_two_sales_of_the_last_unit_exactly_one_wins(locations: dict[str, Any], 
     assert results == ["ok", "refused"]
     assert balance(a, item).on_hand == 0
     assert StockMovement.objects.filter(movement_type=MovementType.SALE).count() == 1
+
+
+# ---- B4.3: operation-level idempotency, FIX-9 ----
+
+
+def test_replaying_an_operation_returns_the_stored_rows_and_writes_nothing_more(
+    locations: dict[str, Any], item: Item
+) -> None:
+    a, op = locations["a"], uuid.uuid4()
+    first = post_stock_changes([change(a, item, 5)], actor=None, operation_id=op)
+    again = post_stock_changes([change(a, item, 5)], actor=None, operation_id=op)
+    assert [r.pk for r in again] == [r.pk for r in first]
+    assert balance(a, item).on_hand == 5 and StockMovement.objects.count() == 1
+    assert AuditEvent.objects.filter(operation_id=op).count() == 1
+
+
+def test_the_same_operation_id_with_other_changes_is_409_idempotency_conflict(
+    locations: dict[str, Any], item: Item
+) -> None:
+    a, op = locations["a"], uuid.uuid4()
+    post_stock_changes([change(a, item, 5)], actor=None, operation_id=op)
+    with pytest.raises(ApiError) as caught:
+        post_stock_changes([change(a, item, 6)], actor=None, operation_id=op)
+    assert caught.value.status == 409 and caught.value.code == "idempotency_conflict"
+    assert balance(a, item).on_hand == 5
+
+
+def test_the_same_csv_import_row_posted_twice_writes_one_ledger_row(
+    locations: dict[str, Any], item: Item
+) -> None:
+    a = locations["a"]
+    post_stock_changes([change(a, item, 4, src=7, line=3)], actor=None)
+    with pytest.raises(ApiError) as caught:  # a fresh operation id, the same batch row
+        post_stock_changes([change(a, item, 4, src=7, line=3)], actor=None)
+    assert caught.value.status == 409 and caught.value.code == "conflict"
+    rows = StockMovement.objects.filter(source_type=SourceType.CSV_IMPORT, source_id=7, source_line_id=3)
+    assert rows.count() == 1 and balance(a, item).on_hand == 4
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_concurrent_copies_of_one_operation_post_once(locations: dict[str, Any], item: Item) -> None:
+    a, op = locations["a"], uuid.uuid4()
+    barrier = Barrier(2)
+
+    def post(_: int) -> int:
+        try:
+            barrier.wait()
+            return len(post_stock_changes([change(a, item, 5)], actor=None, operation_id=op))
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert list(pool.map(post, [1, 2])) == [1, 1]  # both get the same single row back
+    assert balance(a, item).on_hand == 5 and StockMovement.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_same_operation_id_on_different_items_posts_once(locations: dict[str, Any], item: Item) -> None:
+    other = Item.objects.create(
+        sku="SKU-T2", name="Other", category=item.category, brand=item.brand, condition=Condition.NEW
+    )
+    a, op = locations["a"], uuid.uuid4()
+    barrier = Barrier(2)
+
+    def post(chosen: Item) -> str:
+        try:
+            barrier.wait()
+            post_stock_changes([change(a, chosen, 5)], actor=None, operation_id=op)
+            return "ok"
+        except ApiError as exc:
+            return exc.code
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = sorted(pool.map(post, [item, other]))
+    assert results == ["idempotency_conflict", "ok"]
+    assert StockMovement.objects.filter(operation_id=op).count() == 1

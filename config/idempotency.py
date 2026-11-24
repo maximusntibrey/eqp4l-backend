@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -45,6 +46,17 @@ def derive_one_time_password(request: Request) -> str:
     return base64.urlsafe_b64encode(digest[:9]).decode()
 
 
+def _json_default(value: Any) -> str:
+    """Uploaded files count by content, not by name, so the same key with another image is a conflict."""
+    if isinstance(value, UploadedFile):
+        digest = hashlib.sha256()
+        for chunk in value.chunks():
+            digest.update(chunk)
+        value.seek(0)
+        return f"file:{digest.hexdigest()}"
+    return str(value)
+
+
 def idempotent(
     request: Request,
     work: Callable[[], tuple[int, dict[str, Any]]],
@@ -54,7 +66,9 @@ def idempotent(
     """Run `work` once per key. `secrets()` is merged into the response but never stored."""
     key = request_key(request)
     scope = f"{request.method} {request.path}"[:80]
-    body_hash = hashlib.sha256(json.dumps(request.data, sort_keys=True, default=str).encode()).hexdigest()
+    body_hash = hashlib.sha256(
+        json.dumps(request.data, sort_keys=True, default=_json_default).encode()
+    ).hexdigest()
     with transaction.atomic():
         # The unique (actor, scope, key) index makes a concurrent duplicate wait here for the first commit.
         row, created = IdempotencyKey.objects.get_or_create(
