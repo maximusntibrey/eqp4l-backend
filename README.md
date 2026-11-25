@@ -32,7 +32,8 @@ Runs ruff (lint and format), mypy with django-stubs, bandit, pip-audit, `makemig
 
 ## Changelog
 
-- Contract 0.1.2 (not yet synced by the frontend), behaviour notes 2026-11-24, no schema change: `/me` `home_links` now has an Activity tile for Warehouse Admin and Branch Admin (OQ-25); the last active Super Admin cannot lose the role, be suspended or deactivated, answer 409 `conflict` (OQ-26); a Branch Admin's `/users/` list and detail also include Front Staff currently working at their branch (OQ-26).
+- Sprint 2 Day 7: contract 0.5.2 publishes dashboard low-stock/recent activity, the activity log, and shortfall list/resolution APIs. Both contract copies are synced.
+- Contract 0.1.2 behaviour notes 2026-11-24: `/me` `home_links` has an Activity tile for Warehouse Admin and Branch Admin (OQ-25); the last active Super Admin cannot lose the role, be suspended or deactivated (OQ-26); a Branch Admin's `/users/` list and detail include Front Staff working at their branch (OQ-26).
 
 ## Dependencies
 
@@ -40,7 +41,6 @@ Pinned with pip-tools: edit `requirements.in` / `requirements-dev.in`, then `doc
 
 ## Status
 
-- Skeleton only: `/health/`, settings, tooling. No models or migrations until the owner approves the permission table (`docs/design/PERMISSION_TABLE.md`) and the ERD (`docs/design/ERD.md`).
-- `django.contrib.auth` and `AUTH_USER_MODEL` are added with the first migration (custom user from the start). See the note in `config/settings.py`.
-- Seed: `scripts/seed.sh` is a no-op until models exist; it will create SA-0001, one dev user per role (passwords from `.env`), 3 branches and sample data, idempotently.
-- OpenAPI: drf-spectacular is wired (`python manage.py spectacular --file schema.yaml`). The contract at `docs/api/openapi.yaml` is published only after owner approval (B1.3).
+- Sprint 2 backend features are implemented through Day 7, including items, stock, dispatch/receiving, sales, dashboards, activity logs, and shortfall resolution.
+- Seed: `scripts/seed.sh` creates SA-0001, one dev user per role (passwords from `.env`), 3 branches and sample data, idempotently.
+- OpenAPI: contract `docs/api/openapi.yaml` is version 0.5.2 and has an owned frontend copy at `../p4linventory-frontend/contract/openapi.yaml`.

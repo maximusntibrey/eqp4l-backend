@@ -358,10 +358,10 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B6.4 CSV import API (items and opening quantity per location, dry run, error report with row numbers, opening balances written as ledger movements)
 - [x] B6.5 Cancel sale API (SuperAdmin and Branch Admin, reason required, reversal entry linked to the original; status becomes Cancelled)
 - [x] B6.6 Tests: sale atomicity, overselling, cancel reversal, import
-- [ ] B7.1 Dashboard endpoints (stock per branch, in transit, low stock, scoped to role and branch)
-- [ ] B7.2 Activity log endpoints (filter by user, branch, action, date)
-- [ ] B7.3 Basic discrepancy resolution for dispatch shortfalls: return to sender, confirm loss, record damage; mandatory note; through the stock service with ledger and audit entries; any admin role (Super Admin, Warehouse Admin, Branch Admin) within its allowed branches; front staff refused
-- [ ] B7.4 Tests: each resolution path, balances and ledger after resolution, permission refusals
+- [x] B7.1 Dashboard endpoints (stock per branch, in transit, low stock, scoped to role and branch)
+- [x] B7.2 Activity log endpoints (filter by user, branch, action, date)
+- [x] B7.3 Basic discrepancy resolution for dispatch shortfalls: return to sender, confirm loss, record damage; mandatory note; through the stock service with ledger and audit entries; any admin role (Super Admin, Warehouse Admin, Branch Admin) within its allowed branches; front staff refused
+- [x] B7.4 Tests: each resolution path, balances and ledger after resolution, permission refusals
 - [ ] B8.1 End-to-end tests (receive, dispatch, branch receive, sell, find)
 - [ ] B8.2 Permission and branch-isolation tests (allowing the cross-branch lookup exception)
 - [ ] B8.3 Bug fixes from testing
@@ -710,7 +710,10 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 | 2026-11-24 | OQ-30 resolved (owner): by-id dispatch read and receive out of scope are 404, same as a missing id (contract v0.3.2); EXIF kept (not stripped); cost recheck found no gap, guard tests added. | owner |
 | 2026-11-24 | OQ-31..33 approved (owner, relayed by the orchestrator): contract 0.4.0 (sales, item imports) as built; OQ-32 as built; OQ-33 fixed payment codes, customer name and phone deferred to Sprint 3; contract 0.4.1 adds SA-only `/costed-sales/` (new permission table row 48). | Owner |
 | 2026-11-24 | FQ-11 answered (owner): contract 0.4.2, additive: `sales.cancel` and `items.import` in `ActionPermission`; Sales entry in `/me` menu for FS and in `home_links` for SA and BA (their menus are full at 5); permission table row 49. | Owner |
+| 2026-11-24 | Daily branch choice (owner): a login drops any old session branch; Front Staff pick on the first login of the Africa/Accra day, later logins that day restore the first branch chosen that day (earliest switch-log row since local midnight, if still an active branch); a new day shows the picker. SA starts with no branch; BA and WA unchanged. No migration, no contract change. Test: tests/test_working_branch.py. | Owner |
 | 2026-11-24 | Contract v0.3.1 approved (owner): `GET /dispatches/` documents 400 and 403 `wrong_branch`; dispatch stays WA and SA (table row 28); OQ-29 approved as proposed (reject stores received = sent, accepted 0; approve_partial without shortfall allowed; supplier name column 200). | owner |
+| 2026-11-24 | Contract 0.5.0 approved and published (Day 7, additive): Dashboard gains low_stock_count, low_stock, recent_activity; GET /activity-log/; GET /shortfalls/; POST /shortfalls/{id}/resolve/ (id = dispatch line id; mandatory note; quantity up to the remaining shortfall; double resolution 409); new action shortfalls.resolve (SA, WA, BA; table rows 33 to 35). Resolver scope: WA the sender warehouse, BA the destination branch, SA both; out of scope is 404. Self-resolution allowed and flagged (OQ-9c). | Owner |
+| 2026-11-24 | FQ-16 answered (owner): contract 0.5.2 (text only): `/auth/me/` `home_links` get an Activity tile (`/activity`, `activity.view`) and a Shortfalls tile (`/shortfalls`, `shortfalls.resolve`) for SA, WA, BA; FS none; no duplicates; menus stay at most 5. | Owner |
 
 ## DEFERRALS
 
@@ -812,3 +815,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-42 | Day 6 review: the CSV import folded ItemCost in file order while receipts lock by item id (deadlock risk). The fold now runs in `_commit`, sorted by item id, just before the stock is posted; a dry run takes no cost locks. | backend | n/a | tests/test_b6_review2.py::test_an_import_and_a_receipt_over_the_same_items_in_opposite_order_both_finish | | |
 | FIX-43 | Day 6 review: the sale read the cost before its transaction, so the snapshot could be stale after a receipt. It is now read inside the transaction under `select_for_update`, in item order. | backend | n/a | tests/test_b6_review2.py::test_a_sale_waiting_for_a_cost_change_snapshots_the_new_cost | | |
 | FIX-44 | Day 6 review: repeated CSV header names and rows with extra cells were silently accepted. Repeated names are a 400 on `file`; extra cells are a row error. | backend | n/a | tests/test_b6_review2.py (two tests) | | |
+| FIX-45 | Day 7 review: dashboard low stock for a WA or BA with no location was unfiltered. It is now empty (count 0). | backend | n/a | tests/test_b7.py::test_fix45_admins_without_a_location_never_see_unfiltered_low_stock | | |
+| FIX-46 | Day 7 review: SA low stock included inactive locations. It now matches stock_per_location (active only). | backend | n/a | tests/test_b7.py::test_fix46_super_admin_low_stock_skips_inactive_locations | | |
+| FIX-47 | Day 7 review: index on audit events (location, occurred_at) for the scoped activity log, new migration audit 0003. | backend | n/a | tests/test_b7.py::test_fix47_audit_events_have_a_location_time_index | | |
+| FIX-48 | Day 7 review: activity log `date_from` after `date_to` is 400 on `date_to`. Contract text only, version 0.5.1. | backend | n/a | tests/test_b7.py::test_fix48_date_from_after_date_to_is_a_400_on_date_to | | |
+| FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule, 2026-11-24): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
