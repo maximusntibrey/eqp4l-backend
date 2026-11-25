@@ -371,8 +371,8 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B9.4 Fixes from the checks — no new stock, permission or security finding required a fix
 - [ ] B10.1 Production deployment (after the owner's go-ahead)
 - [ ] B10.2 Load real data and create real users
-- [ ] B10.3 Short admin notes
-- [ ] B10.4 MVP release (v1.0.0)
+- [x] B10.3 Short admin notes — `docs/ADMIN_NOTES.md`
+- [ ] B10.4 MVP release (v1.0.0) — blocked by hosting/staging, production backup and owner go-ahead
 
 ### Frontend, Sprint 2
 
