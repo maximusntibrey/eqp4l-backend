@@ -18,9 +18,9 @@ Set these on the Django service:
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 SECRET_KEY=<generate separately>
 DEBUG=False
-ALLOWED_HOSTS=${{RAILWAY_PUBLIC_DOMAIN}}
-CSRF_TRUSTED_ORIGINS=https://<backend>.up.railway.app
-CORS_ALLOWED_ORIGINS=https://<frontend>.up.railway.app
+ALLOWED_HOSTS=eqp4l-backend-production.up.railway.app
+CSRF_TRUSTED_ORIGINS=https://eqp4l-backend-production.up.railway.app,https://p4l-inventory-production.up.railway.app
+CORS_ALLOWED_ORIGINS=https://p4l-inventory-production.up.railway.app
 SECURE_PROXY_SSL_HEADER_ENABLED=True
 SECURE_SSL_REDIRECT=True
 SESSION_COOKIE_SECURE=True
@@ -28,7 +28,8 @@ CSRF_COOKIE_SECURE=True
 MEDIA_ROOT=/data/media
 ```
 
-`Postgres` is the service name assumed in the reference; replace `Postgres` if the Railway PostgreSQL service has another name.
+The database service has internal hostname `postgres.railway.internal`. Prefer Railway's reference variable instead of pasting that hostname:
+`DATABASE_URL=${{Postgres.DATABASE_URL}}`. Replace `Postgres` if the actual PostgreSQL service name differs.
 
 Generate a Django secret locally:
 
