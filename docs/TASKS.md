@@ -362,9 +362,9 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B7.2 Activity log endpoints (filter by user, branch, action, date)
 - [x] B7.3 Basic discrepancy resolution for dispatch shortfalls: return to sender, confirm loss, record damage; mandatory note; through the stock service with ledger and audit entries; any admin role (Super Admin, Warehouse Admin, Branch Admin) within its allowed branches; front staff refused
 - [x] B7.4 Tests: each resolution path, balances and ledger after resolution, permission refusals
-- [ ] B8.1 End-to-end tests (receive, dispatch, branch receive, sell, find)
-- [ ] B8.2 Permission and branch-isolation tests (allowing the cross-branch lookup exception)
-- [ ] B8.3 Bug fixes from testing
+- [x] B8.1 End-to-end tests (receive, dispatch, branch receive, sell, find)
+- [x] B8.2 Permission and branch-isolation tests (allowing the cross-branch lookup exception)
+- [x] B8.3 Bug fixes from testing
 - [ ] B9.1 Performance check (search and product list within about 2 seconds)
 - [ ] B9.2 Security check of the MVP endpoints
 - [ ] B9.3 Automated backups and a tested restore
