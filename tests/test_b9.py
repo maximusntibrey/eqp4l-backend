@@ -5,7 +5,7 @@ from time import monotonic
 from rest_framework.test import APIClient
 
 from inventory.models import Brand, Category, Item
-from tests.api import call, client_as
+from tests.api import client_as
 
 
 def test_search_and_product_list_complete_within_two_seconds(
