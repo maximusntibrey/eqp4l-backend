@@ -14,6 +14,7 @@ _STOCK = ("stock", "Stock", "/stock")
 _RECEIVE = ("receive", "Receive", "/receive")
 _ACTIVITY = ("activity", "Activity", "/activity")
 _SALES = ("sales", "Sales", "/sales")  # row 49 (v0.4.2)
+_SHORTFALLS = ("shortfalls", "Shortfalls", "/shortfalls")  # rows 33-35 (v0.5.2, FQ-16)
 
 MENUS: dict[str, list[tuple[str, str, str]]] = {
     c.FRONT_STAFF: [_SELL, _FIND, _STOCK, _RECEIVE, _SALES],
@@ -34,9 +35,9 @@ MENUS: dict[str, list[tuple[str, str, str]]] = {
     ],
 }
 HOME_LINKS: dict[str, list[tuple[str, str, str]]] = {
-    c.SUPER_ADMIN: [_ACTIVITY, _SELL, _FIND, _RECEIVE, _SALES],  # menu is full: Sales is a Home tile
-    c.WAREHOUSE_ADMIN: [_ACTIVITY],  # OQ-25: own location's activity only (OQ-5)
-    c.BRANCH_ADMIN: [_ACTIVITY, _SALES],  # menu is full (5): Sales is a Home tile
+    c.SUPER_ADMIN: [_ACTIVITY, _SHORTFALLS, _SELL, _FIND, _RECEIVE, _SALES],  # menu full: Sales is a tile
+    c.WAREHOUSE_ADMIN: [_ACTIVITY, _SHORTFALLS],  # OQ-25: own location's activity only (OQ-5)
+    c.BRANCH_ADMIN: [_ACTIVITY, _SHORTFALLS, _SALES],  # menu is full (5): Sales is a Home tile
 }
 
 

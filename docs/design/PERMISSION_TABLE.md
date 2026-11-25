@@ -117,6 +117,8 @@ Draft items cannot be received, dispatched or sold; only Active ones. (BE 3.9)
 | 34 | Resolve: return to sender, confirm loss, record damage (mandatory note) | Y | Y | Y | N | Any admin role, within the locations it may act in (sender warehouse: WA; destination branch: BA; SA both); FS never. OVR 13, BE s5.6, DEC, OQ-9b |
 | 35 | Resolve the same person's own recorded shortfall | Y (flagged) | Y (flagged) | Y (flagged) | N | Resolution is not an approval request; the audit event is flagged when it is the same person (OQ-9c) |
 
+Contract 0.5.0: rows 33 to 35 are the action `shortfalls.resolve` (`GET /shortfalls/`, `POST /shortfalls/{id}/resolve/`); out of scope is 404, FS is 403. Rows 40, 41 and 45 are served by `GET /dashboard/` (adds low stock and recent activity) and `GET /activity-log/` (action `activity.view`, no cost, no before/after values).
+
 For a warehouse-to-branch shortfall, WA acts for the sender side, BA for its own destination branch, SA for both (OQ-9b).
 
 Effects per DEC: return to sender releases reserved; confirm loss releases reserved and reduces on hand; record damage releases reserved and reduces on hand at the sender and adds quarantined at the destination. Each writes ledger rows and an audit event.
@@ -141,6 +143,8 @@ Effects per DEC: return to sender releases reserved; confirm loss releases reser
 | 42 | Edit or delete an audit event or ledger row | N | N | N | N | Append-only for everyone, including SA. BE s9 |
 
 ### 4.10 Menu entries and Home links (OQ-23, owner-approved 2026-11-24)
+
+Contract 0.5.2 (FQ-16): SA, WA and BA also get a Shortfalls Home tile (`/shortfalls`, rows 33 to 35) next to Activity.
 
 Each entry is shown only to a role that holds the row it points to. Super Admin opens these four from Home (FE s3): the server returns them as `/me` `home_links`, separate from the max-5 `menu`, so they never take a nav slot. `/me` `can_assign_multiple_roles` is true only for SA (row 7).
 

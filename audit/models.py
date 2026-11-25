@@ -29,4 +29,5 @@ class AuditEvent(AppendOnlyModel):
         indexes = [
             models.Index(fields=["occurred_at"], name="audit_occurred_idx"),
             models.Index(fields=["actor", "occurred_at"], name="audit_actor_idx"),
+            models.Index(fields=["location", "occurred_at"], name="audit_location_idx"),
         ]
