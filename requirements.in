@@ -11,3 +11,4 @@ Pillow
 gunicorn
 whitenoise
 sentry-sdk
+dj-database-url

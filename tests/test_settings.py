@@ -64,6 +64,37 @@ def test_debug_defaults_to_false_when_env_unset(reload_settings, monkeypatch) ->
     assert reload_settings(DJANGO_SECRET_KEY="x" * 50).DEBUG is False
 
 
+def test_railway_environment_aliases(reload_settings) -> None:  # type: ignore[no-untyped-def]
+    s = reload_settings(
+        DEBUG="False",
+        SECRET_KEY="x" * 50,
+        ALLOWED_HOSTS="backend.up.railway.app",
+        CSRF_TRUSTED_ORIGINS="https://frontend.up.railway.app",
+        CORS_ALLOWED_ORIGINS="https://frontend.up.railway.app",
+        SECURE_PROXY_SSL_HEADER_ENABLED="True",
+    )
+    assert s.ALLOWED_HOSTS == ["backend.up.railway.app"]
+    assert s.CSRF_TRUSTED_ORIGINS == ["https://frontend.up.railway.app"]
+    assert s.CORS_ALLOWED_ORIGINS == ["https://frontend.up.railway.app"]
+    assert s.CORS_ALLOW_ALL_ORIGINS is False
+    assert s.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+def test_local_sqlite_and_volume_media_fallbacks(reload_settings, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    s = reload_settings(DJANGO_DEBUG="True", DJANGO_SECRET_KEY="x" * 50)
+    assert s.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
+
+    s = reload_settings(DJANGO_DEBUG="False", SECRET_KEY="x" * 50, MEDIA_ROOT="/data/media")
+    assert str(s.MEDIA_ROOT) == "/data/media"
+
+
+def test_static_and_media_storage_backends(reload_settings) -> None:  # type: ignore[no-untyped-def]
+    s = reload_settings(DEBUG="False", SECRET_KEY="x" * 50)
+    assert s.STORAGES["staticfiles"]["BACKEND"].endswith("ManifestStaticFilesStorage")
+    assert s.STORAGES["default"]["BACKEND"].endswith("FileSystemStorage")
+
+
 @pytest.mark.django_db
 def test_health_over_http_is_not_redirected_when_debug_off(reload_settings, settings) -> None:  # type: ignore[no-untyped-def]
     # Container health checks call plain http; the SSL redirect must not turn /health/ into a 301.
