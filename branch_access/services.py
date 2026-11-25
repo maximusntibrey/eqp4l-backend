@@ -8,12 +8,14 @@ can never name its own scope. Every switch writes one switch-log row and one aud
 
 from django.db import transaction
 from django.http import HttpRequest
+from django.utils import timezone
 
 from accounts.models import User
 from audit.services import record_event
 from branch_access.models import SwitchLog
 from branches.models import Location, LocationKind
 from config.errors import ApiError
+from roles import constants as c
 from roles.permissions import require_action
 from roles.services import active_role
 
@@ -45,3 +47,20 @@ def set_working_branch(request: HttpRequest, actor: User, branch_id: int) -> boo
         )
         request.session[SESSION_KEY] = target.pk
     return True
+
+
+def restore_daily_branch(request: HttpRequest, user: User) -> None:
+    """Front Staff pick the branch on the first login of the Africa/Accra day; later logins that day restore
+    the FIRST branch chosen (a mid-day switch does not change it). A new day, or a first branch that is no
+    longer an active branch, leaves it unset so the picker shows. Other roles are untouched."""
+    if active_role(user) != c.FRONT_STAFF:
+        return
+    midnight = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    first = (
+        SwitchLog.objects.filter(user=user, at__gte=midnight)
+        .select_related("to_location")
+        .order_by("at", "id")
+        .first()
+    )
+    if first and first.to_location.kind == LocationKind.BRANCH and first.to_location.is_active:
+        request.session[SESSION_KEY] = first.to_location.pk

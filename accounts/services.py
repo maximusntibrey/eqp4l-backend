@@ -26,6 +26,7 @@ from django.utils import timezone
 
 from accounts.models import LoginEvent, LoginIdSequence, LoginLog, User, UserStatus
 from audit.services import client_meta, record_event
+from branch_access.services import SESSION_KEY, restore_daily_branch
 from branches.models import Location, LocationKind
 from config.errors import ApiError
 from roles import constants as c
@@ -257,6 +258,8 @@ def _authenticate(request: HttpRequest, login_id: str, ip: str | None, password:
 def complete_login(request: HttpRequest, user: User) -> None:
     """Start the session (new key, new CSRF token), stamp last login, log success."""
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    request.session.pop(SESSION_KEY, None)  # a re-login on a live cookie keeps old session data
+    restore_daily_branch(request, user)  # Front Staff: the first branch chosen today, else the picker
     User.objects.filter(pk=user.pk).update(last_login_at=timezone.now())
     user.refresh_from_db(fields=["last_login_at"])
     _log_login(request, LoginEvent.SUCCESS, user.login_id, user)
