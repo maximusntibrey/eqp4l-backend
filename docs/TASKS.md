@@ -324,7 +324,7 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 
 ### DevOps, Sprint 1
 
-- [ ] O1.1 Owner chooses the hosting provider, database host, object storage and domain names (record in `RUNBOOK.md` and remove from Open questions)
+- [x] O1.1 Owner decision recorded: Railway project `test-production`, existing PostgreSQL service `Postgres`, Django `FileSystemStorage` on a Railway Volume intended at `/data`, and generated backend/frontend domains; see `RUNBOOK.md`. Verify the volume mount in the dashboard before release.
 - [x] O1.2 Local environment: Dockerfile and Docker Compose for the backend and PostgreSQL; `.env.example` for both repos
 - [x] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service — verified `.github/workflows/ci.yml` and green manual CI runs
 - [x] O1.4 Frontend CI pipeline (3.3) — verified frontend `.github/workflows/ci.yml` and green manual CI runs
@@ -367,12 +367,12 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B8.3 Bug fixes from testing
 - [x] B9.1 Performance check (search and product list within about 2 seconds) — verified `tests/test_b9.py` at 250 seeded items
 - [x] B9.2 Security check of the MVP endpoints — verified `tests/test_contract_security.py`, `tests/test_permissions.py`, and `tests/test_b9.py`
-- [ ] B9.3 Automated backups and a tested restore — local backup/restore verified; automated hosting backups remain blocked by O1.1
+- [ ] B9.3 Automated backups and a tested restore — local restore verified; Railway Trial cannot create hosted backups, and no alternative verified method is approved.
 - [x] B9.4 Fixes from the checks — no new stock, permission or security finding required a fix
-- [ ] B10.1 Production deployment (after the owner's go-ahead)
-- [ ] B10.2 Load real data and create real users
+- [ ] B10.1 Production deployment — owner go-ahead received; blocked by O2.6 until a verified backup is available. No production deploy or migration has run.
+- [ ] B10.2 Load real data and create real users — blocked until B10.1; no production users or business data have been created.
 - [x] B10.3 Short admin notes — `docs/ADMIN_NOTES.md`
-- [ ] B10.4 MVP release (v1.0.0) — blocked by hosting/staging, production backup and owner go-ahead
+- [ ] B10.4 MVP release (v1.0.0) — blocked by the verified-backup gate; owner go-ahead is already recorded.
 
 ### Frontend, Sprint 2
 
@@ -396,13 +396,13 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 
 ### DevOps, Sprint 2
 
-- [ ] O2.1 Production environment created (managed PostgreSQL, object storage, HTTPS, domains, CORS and CSRF settings, secure cookies)
-- [ ] O2.2 Automated daily backups for the database and the image storage
-- [ ] O2.3 Restore test on staging, result recorded in the deployment log
-- [ ] O2.4 Rollback rehearsed on staging, written into `RUNBOOK.md`
-- [ ] O2.5 Monitoring and uptime checks on production
-- [ ] O2.6 Owner go-ahead, verified backup, then production deployment of `v1.0.0` with smoke tests (matches B10.1)
-- [ ] O2.7 Deployment log entry written for `v1.0.0`
+- [ ] O2.1 Railway services and generated domains are identified; verify production variables, reference variables, and the `/data` volume mount before deployment.
+- [ ] O2.2 Automated daily backups for PostgreSQL and the image volume — blocked: Railway Trial cannot create backups; no alternative verified method is approved.
+- [ ] O2.3 Restore test on hosted staging — blocked because no hosted staging service exists.
+- [ ] O2.4 Rollback rehearsed on hosted staging — blocked because no hosted staging service exists.
+- [ ] O2.5 Monitoring and uptime checks on production — blocked until a production deployment is approved and completed.
+- [ ] O2.6 Owner go-ahead received; production deployment remains blocked until a verified database and image-storage backup is available. No migration or deployment has run.
+- [ ] O2.7 Deployment log entry written for `v1.0.0` — deferred until O2.6 passes.
 
 ## SPRINT 3 (Days 11 to 15): Fixes from real use, laptop, parts and accessory specifications, warranty terms, product and variant split, several images and spec sheets. Release: `v1.1.0`.
 
@@ -714,6 +714,7 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 | 2026-11-24 | Contract v0.3.1 approved (owner): `GET /dispatches/` documents 400 and 403 `wrong_branch`; dispatch stays WA and SA (table row 28); OQ-29 approved as proposed (reject stores received = sent, accepted 0; approve_partial without shortfall allowed; supplier name column 200). | owner |
 | 2026-11-24 | Contract 0.5.0 approved and published (Day 7, additive): Dashboard gains low_stock_count, low_stock, recent_activity; GET /activity-log/; GET /shortfalls/; POST /shortfalls/{id}/resolve/ (id = dispatch line id; mandatory note; quantity up to the remaining shortfall; double resolution 409); new action shortfalls.resolve (SA, WA, BA; table rows 33 to 35). Resolver scope: WA the sender warehouse, BA the destination branch, SA both; out of scope is 404. Self-resolution allowed and flagged (OQ-9c). | Owner |
 | 2026-11-24 | FQ-16 answered (owner): contract 0.5.2 (text only): `/auth/me/` `home_links` get an Activity tile (`/activity`, `activity.view`) and a Shortfalls tile (`/shortfalls`, `shortfalls.resolve`) for SA, WA, BA; FS none; no duplicates; menus stay at most 5. | Owner |
+| 2026-11-26 | OQ-2/O1.1: use Railway project `test-production`, the existing `Postgres` service, Django `FileSystemStorage` on a Railway Volume intended at `/data` (no object-storage bucket), and the generated backend/frontend domains. Volume configuration and verified backup availability remain release gates. | Owner |
 
 ## DEFERRALS
 
@@ -726,7 +727,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | Ref | Question | Raised by | Answer | Answered by |
 |---|---|---|---|---|
 | OQ-1 | Development gate (rule 0.7): has the owner authorised development? | Doc sync 2026-11-18 | Yes, from Sprint 1 | Owner, 2026-11-18 |
-| OQ-2 | Hosting provider, database host, object storage and domain names (O1.1) | DevOps doc | Open | |
+| OQ-2 | Hosting provider, database host, storage and domain names (O1.1) | DevOps doc | Resolved 2026-11-26: Railway `test-production`; existing `Postgres` service via `${{Postgres.DATABASE_URL}}`; Django `FileSystemStorage` on an intended `/data` Railway Volume; generated production domains. Verify the mount before release. | Owner, 2026-11-26 |
 | OQ-3 | Backup and log retention periods | DevOps doc | Decided (owner, 2026-11-23): local zips kept for whole project; DB retention set with hosting | |
 | OQ-4 | IDs are immutable: if a USR- user is later made Super Admin (or an SA- user loses the role), what happens to the login ID? Proposed: ID never changes; SA- is only issued to accounts created as Super Admin. | backend-dev, B1.1 (PERMISSION_TABLE s4.1), 2026-11-23 | Approved (owner, 2026-11-23) | |
 | OQ-5 | Who besides Super Admin may see the user list, session history and the activity log (FE 4.13 gives no role list)? Proposed: SA all; BA own branch activity; WA warehouse activity; FS none. | backend-dev, B1.1 rows 9, 41, 2026-11-23 | Approved (owner, 2026-11-23) | |
@@ -759,7 +760,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-32 | CSV import creates new items as Draft (no image, no required specs) and posts opening stock to them, although "only Active items can be received". Existing SKUs (any status except Discontinued) are reused unchanged and item columns on that row are ignored. Re-importing the same SKU at the same location ADDS stock again (no duplicate-opening-balance guard; a retry with the same Idempotency-Key is safe). Decide: allow stock on Draft items, and whether a second opening balance for one SKU and location should be refused. | backend-dev, B6.4, 2026-11-24 | Approved (owner, 2026-11-24, relayed by the orchestrator): keep as built | Owner |
 | OQ-33 | Sales: (a) customer name and phone (required for warranty items per BE s6) have no column on `sales_sale`, so they need a migration and a rule for which items are warranty-bearing; not built. (b) The frontend needs the payment-method list; built as fixed codes cash, mobile_money, card in the contract enum, with no list endpoint. (c) Sale detail of another branch is 404 for BA and FS (OQ-30 style); a list `branch` filter for another branch is 403. | backend-dev, B6.1-B6.2, 2026-11-24 | Approved (owner, 2026-11-24, relayed by the orchestrator): fixed payment codes kept; customer name and phone deferred to Sprint 3 | Owner |
 | OQ-34 | CSV formula injection: a future CSV export (B40.1) must neutralise cells that start with `=`, `+`, `-` or `@` (for example by prefixing a quote), because item names, SKUs and notes come from users and imports. The import itself stores text as given (`inventory/imports.py` `_lookup`). Decide the exact rule before B40.1. | backend-dev, Day 6 review, 2026-11-24 | Open | Owner |
-| OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O1.1 hosting checklist. | backend-dev, Day 6 review, 2026-11-24 | Open (blocked by O1.1) | Owner |
+| OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O2.1 deployment checklist. | backend-dev, Day 6 review, 2026-11-24 | Open (confirm host body limit before deployment) | Owner |
 
 ## FIX LOG
 
@@ -820,3 +821,4 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-47 | Day 7 review: index on audit events (location, occurred_at) for the scoped activity log, new migration audit 0003. | backend | n/a | tests/test_b7.py::test_fix47_audit_events_have_a_location_time_index | | |
 | FIX-48 | Day 7 review: activity log `date_from` after `date_to` is 400 on `date_to`. Contract text only, version 0.5.1. | backend | n/a | tests/test_b7.py::test_fix48_date_from_after_date_to_is_a_400_on_date_to | | |
 | FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule, 2026-11-24): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
+| FIX-50 | Production rate-limit responses included `Retry-After`, but browsers could not read it cross-origin. Expose the header only to allowed CORS origins. | backend | sprint/2-mvp-release | tests/test_settings.py::test_cors_exposes_retry_after_to_frontend | no | not yet |
