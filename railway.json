@@ -6,10 +6,7 @@
   },
   "deploy": {
     "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3",
-    "preDeployCommand": [
-      "python manage.py migrate --noinput",
-      "python manage.py collectstatic --noinput"
-    ],
+    "preDeployCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 100
   }

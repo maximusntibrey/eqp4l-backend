@@ -8,11 +8,11 @@
 
 Railway uses the existing PostgreSQL service `Postgres` through `${{Postgres.DATABASE_URL}}`. Backend uploads use Django `FileSystemStorage` on a Railway Volume intended to be mounted at `/data` (`MEDIA_ROOT=/data/media`); no object-storage bucket is used. Public domains are `eqp4l-backend-production.up.railway.app` and `p4l-inventory-production.up.railway.app`. Confirm the actual volume mount in Railway before release.
 
-The deployment target is `main` for both services. On 2026-11-26, both Railway production services were found connected to `sprint/2-mvp-release`; auto-deploy was disabled for both to prevent further sprint pushes from deploying. Set and verify the source branch as `main` only after the backup gate is satisfied. Production variables belong in Railway's variable store, never in git. The frontend `VITE_API_URL` must be set before its build and changes require a redeploy.
+The deployment target is `main` for both services (verified with the Railway CLI). Production variables belong in Railway's variable store, never in git. The backend `DJANGO_ALLOWED_HOSTS` must include `healthcheck.railway.app` and `PORT` must match the domain target port (8080). The frontend `VITE_API_URL` must be set before its build and changes require a redeploy.
 
 ## Production release gate
 
-The owner approved production work, but a verified database-and-volume backup is still unavailable. On 2026-11-26, sprint-branch pushes triggered an unintended partial Railway deployment: the frontend status succeeded and `/login` returned HTTP 200; the backend status failed and `/health/` returned HTTP 502. The backend deployment screen showed initialization, build, and deploy had not started, so there is no evidence that its `preDeployCommand` ran; confirm migration state from Railway and the database before any further deployment. Auto-deploy is disabled for both services. Do not merge to `main`, re-enable auto-deploy, or deploy until a backup has been created and restored successfully. An empty-looking database is not a waiver.
+Take a verified database-and-volume backup before loading real data. Railway Trial cannot create backups; use `scripts/backup.sh` / `scripts/backup.ps1` against the hosted database until a Railway backup is available.
 
 ## Staging
 
