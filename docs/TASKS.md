@@ -822,3 +822,13 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-48 | Day 7 review: activity log `date_from` after `date_to` is 400 on `date_to`. Contract text only, version 0.5.1. | backend | n/a | tests/test_b7.py::test_fix48_date_from_after_date_to_is_a_400_on_date_to | | |
 | FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule, 2026-11-24): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
 | FIX-50 | Production rate-limit responses included `Retry-After`, but browsers could not read it cross-origin. Expose the header only to allowed CORS origins. | backend | sprint/2-mvp-release | tests/test_settings.py::test_cors_exposes_retry_after_to_frontend | no | not yet |
+
+## BLOCKERS (DevOps, Sprints 1-2)
+
+| # | Blocker | Root cause / status | Needs |
+|---|---|---|---|
+| 1 | PRs into `main` and `develop` cannot merge | Push and pull_request events never start CI. Only manual `workflow_dispatch` runs exist, and they do not satisfy the required `check` on a PR ("Required status check check is expected"). Cause unresolved on the GitHub side. | Owner go-ahead to turn `enforce_admins` off briefly, merge, turn it back on (as done for Sprint 1 on `develop`); or GitHub Support fix |
+| 2 | `main` held only the initial commit | Sprints merge to `develop`; Railway was connected to `sprint/2-mvp-release`. Fix PR `fix/restore-deployment-to-main` (same tree as `5e994f3`) is open and CI-green, blocked by #1 | As #1 |
+| 3 | Railway source branch and fresh deploy from `main` | No Railway CLI or token on this machine; source branch cannot be read or set. Also gated by the verified-backup rule (O2.2/O2.6) | Railway API token or dashboard action; backup gate decision |
+| 4 | Backend production returns 502 | Railway deployment status for `5e994f3` is failure. Logs not available. Probable cause: Railway healthcheck sends Host `healthcheck.railway.app`, which is missing from `ALLOWED_HOSTS` (docs/RAILWAY.md lists only the public domain). Unverified. | Backend deploy logs; add `healthcheck.railway.app` to the `ALLOWED_HOSTS` variable |
+| 5 | O2.3/O2.4 hosted staging, O2.5 monitoring, O2.7 | No hosted staging; no approved production deploy | Owner decision O1.1 / backup gate |
