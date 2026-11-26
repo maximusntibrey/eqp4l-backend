@@ -1,0 +1,14 @@
+# Runtime dependencies (TASKS 2.3). Compile: scripts/compile-requirements.sh
+Django>=5.2,<5.3        # 5.2 LTS
+djangorestframework
+drf-spectacular
+psycopg[binary]
+django-environ
+argon2-cffi
+django-cors-headers
+django-filter
+Pillow
+gunicorn
+whitenoise
+sentry-sdk
+dj-database-url
