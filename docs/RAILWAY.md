@@ -39,6 +39,16 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
 
 Never commit or print the generated value.
 
+## Create the first production Super Admin
+
+After migrations complete, open Railway's backend shell and run:
+
+```text
+python manage.py create_production_superadmin --full-name "Owner Name"
+```
+
+The command refuses reruns once a Super Admin exists and returns the Login ID plus a one-time password in the shell. Give the one-time password to the owner once, then require the owner to change it at first login.
+
 ## Railway Volume
 
 Add a Railway Volume to the Django service and mount it at `/data`. Set `MEDIA_ROOT=/data/media`. Railway volumes persist across deploys and restarts. Django uses local `FileSystemStorage`; no object-storage credentials are required.
