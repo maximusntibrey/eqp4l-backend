@@ -8,11 +8,11 @@
 
 Railway uses the existing PostgreSQL service `Postgres` through `${{Postgres.DATABASE_URL}}`. Backend uploads use Django `FileSystemStorage` on a Railway Volume intended to be mounted at `/data` (`MEDIA_ROOT=/data/media`); no object-storage bucket is used. Public domains are `eqp4l-backend-production.up.railway.app` and `p4l-inventory-production.up.railway.app`. Confirm the actual volume mount in Railway before release.
 
-The deployment target is `main` for both services; verify each Railway service's source branch before release. Production variables belong in Railway's variable store, never in git. The frontend `VITE_API_URL` must be set before its build and changes require a redeploy.
+The deployment target is `main` for both services (verified with the Railway CLI). Production variables belong in Railway's variable store, never in git. The backend `DJANGO_ALLOWED_HOSTS` must include `healthcheck.railway.app` and `PORT` must match the domain target port (8080). The frontend `VITE_API_URL` must be set before its build and changes require a redeploy.
 
 ## Production release gate
 
-The owner approved production work, but no production deployment or migration has run. Railway Trial currently cannot create a PostgreSQL backup, and no alternative verified database-and-volume backup method is approved. Do not deploy or run production migrations until a backup has been created and restored successfully. An empty-looking database is not a waiver.
+Take a verified database-and-volume backup before loading real data. Railway Trial cannot create backups; use `scripts/backup.sh` / `scripts/backup.ps1` against the hosted database until a Railway backup is available.
 
 ## Staging
 

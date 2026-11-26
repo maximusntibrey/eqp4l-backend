@@ -369,8 +369,8 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B9.2 Security check of the MVP endpoints — verified `tests/test_contract_security.py`, `tests/test_permissions.py`, and `tests/test_b9.py`
 - [ ] B9.3 Automated backups and a tested restore — local restore verified; Railway Trial cannot create hosted backups, and no alternative verified method is approved.
 - [x] B9.4 Fixes from the checks — no new stock, permission or security finding required a fix
-- [ ] B10.1 Production deployment — owner go-ahead received; blocked by O2.6 until a verified backup is available. No production deploy or migration has run.
-- [ ] B10.2 Load real data and create real users — blocked until B10.1; no production users or business data have been created.
+- [ ] B10.1 Production release — the `main` branch now holds the Sprint 1 and 2 code and Railway deployed it (backend `/health/` returns database ok, 2026-11-26). Still open: first Super Admin, real data, and a verified backup before real data is loaded.
+- [ ] B10.2 Load real data and create real users — blocked until B10.1; no real users or business data have been loaded.
 - [x] B10.3 Short admin notes — `docs/ADMIN_NOTES.md`
 - [ ] B10.4 MVP release (v1.0.0) — blocked by the verified-backup gate; owner go-ahead is already recorded.
 
@@ -396,12 +396,12 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 
 ### DevOps, Sprint 2
 
-- [ ] O2.1 Railway services and generated domains are identified; verify production variables, reference variables, and the `/data` volume mount before deployment.
+- [x] O2.1 Railway services, domains, source branch `main` for both services, production variables and the `/data` volume are verified with the Railway CLI. Backend `DJANGO_ALLOWED_HOSTS` includes `healthcheck.railway.app`; `PORT=8080`.
 - [ ] O2.2 Automated daily backups for PostgreSQL and the image volume — blocked: Railway Trial cannot create backups; no alternative verified method is approved.
 - [ ] O2.3 Restore test on hosted staging — blocked because no hosted staging service exists.
 - [ ] O2.4 Rollback rehearsed on hosted staging — blocked because no hosted staging service exists.
 - [ ] O2.5 Monitoring and uptime checks on production — blocked until a production deployment is approved and completed.
-- [ ] O2.6 Owner go-ahead received; production deployment remains blocked until a verified database and image-storage backup is available. No migration or deployment has run.
+- [ ] O2.6 Owner go-ahead received. Fresh deploy from `main` succeeded on 2026-11-26 (backend deployment 069a98a7, frontend 3d338b46). Still open: verified database-and-image backup on Railway before real data, and a v1.0.0 smoke-test sign-off.
 - [ ] O2.7 Deployment log entry written for `v1.0.0` — deferred until O2.6 passes.
 
 ## SPRINT 3 (Days 11 to 15): Fixes from real use, laptop, parts and accessory specifications, warranty terms, product and variant split, several images and spec sheets. Release: `v1.1.0`.
@@ -822,3 +822,13 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-48 | Day 7 review: activity log `date_from` after `date_to` is 400 on `date_to`. Contract text only, version 0.5.1. | backend | n/a | tests/test_b7.py::test_fix48_date_from_after_date_to_is_a_400_on_date_to | | |
 | FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule, 2026-11-24): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
 | FIX-50 | Production rate-limit responses included `Retry-After`, but browsers could not read it cross-origin. Expose the header only to allowed CORS origins. | backend | sprint/2-mvp-release | tests/test_settings.py::test_cors_exposes_retry_after_to_frontend | no | not yet |
+
+## BLOCKERS (DevOps, Sprints 1-2)
+
+| # | Blocker | Root cause / status | Needs |
+|---|---|---|---|
+| 1 | PRs into `main` and `develop` cannot merge | Push and pull_request events never start CI. Only manual `workflow_dispatch` runs exist, and they do not satisfy the required `check` on a PR ("Required status check check is expected"). Cause unresolved on the GitHub side. | Owner go-ahead to turn `enforce_admins` off briefly, merge, turn it back on (as done for Sprint 1 on `develop`); or GitHub Support fix |
+| 2 | `main` held only the initial commit | Sprints merge to `develop`; Railway was connected to `sprint/2-mvp-release`. Fix PR `fix/restore-deployment-to-main` (same tree as `5e994f3`) is open and CI-green, blocked by #1 | As #1 |
+| 3 | Railway source branch and fresh deploy from `main` | No Railway CLI or token on this machine; source branch cannot be read or set. Also gated by the verified-backup rule (O2.2/O2.6) | Railway API token or dashboard action; backup gate decision |
+| 4 | Backend production returns 502 | Railway deployment status for `5e994f3` is failure. Logs not available. Probable cause: Railway healthcheck sends Host `healthcheck.railway.app`, which is missing from `ALLOWED_HOSTS` (docs/RAILWAY.md lists only the public domain). Unverified. | Backend deploy logs; add `healthcheck.railway.app` to the `ALLOWED_HOSTS` variable |
+| 5 | O2.3/O2.4 hosted staging, O2.5 monitoring, O2.7 | No hosted staging; no approved production deploy | Owner decision O1.1 / backup gate |
