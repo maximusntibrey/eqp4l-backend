@@ -1,0 +1,15 @@
+name: Uptime
+# Pings the production health endpoints every 15 minutes. A failed run emails the repo owner.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backend health reports database ok
+        run: curl -fsS --retry 3 --retry-delay 10 https://eqp4l-backend-production.up.railway.app/health/ | grep -q '"database":"ok"'
+      - name: Frontend login page is up
+        run: curl -fsS --retry 3 --retry-delay 10 -o /dev/null https://p4l-inventory-production.up.railway.app/login

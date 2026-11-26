@@ -31,8 +31,8 @@ Tick a box only when the step is done, tested, reviewed and pushed to git.
 ### 0.1 Orientation (do this before every piece of work)
 
 1. Read this file, the requirements documents, and `SKILLS.md` in the repo you are working in.
-2. Confirm which repo you are in: run `git remote -v` and `pwd`. Backend work happens only in the backend repo, frontend work only in the frontend repo. Never edit one repo while in the other. _(Applied in the end-of-day cycle (owner, 2026-11-23))_
-3. Confirm the git identity (section 1.2) and the current branch: run `git config user.name`, `git config user.email`, `git branch --show-current`. Fix them before doing anything else. _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+2. Confirm which repo you are in: run `git remote -v` and `pwd`. Backend work happens only in the backend repo, frontend work only in the frontend repo. Never edit one repo while in the other. _(Applied in the end-of-day cycle (owner))_
+3. Confirm the git identity (section 1.2) and the current branch: run `git config user.name`, `git config user.email`, `git branch --show-current`. Fix them before doing anything else. _(Applied in the end-of-day cycle (owner))_
 4. Run `git pull` on the current branch, then pick the next unticked step in order. Do not skip ahead.
 5. Always be present at the end of a step: after finishing, re-run the checks in 0.3, commit, push and tick. Never leave work uncommitted or unpushed when a session ends.
 
@@ -68,11 +68,11 @@ Tick a box only when the step is done, tested, reviewed and pushed to git.
 
 A fix, patch, dependency update, config change or "quick tweak" is real work. It gets no shortcut. Section 1.7 gives the exact git procedure.
 
-- Never edit directly on `main`, `develop` or a sprint branch. Every change, however small, goes on its own branch and merges by pull request. _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+- Never edit directly on `main`, `develop` or a sprint branch. Every change, however small, goes on its own branch and merges by pull request. _(Applied in the end-of-day cycle (owner))_
 - Every fix is tied to a reference: a step code, or a logged issue (`FIX-<n>`) recorded under "Fix log" at the bottom of this file. No untracked changes.
 - A bug fix must include a test that fails before the fix and passes after it. If a test is genuinely impossible, record why in the pull request.
 - The full check command must be green before the pull request is opened and again before it merges.
-- Fixes touching stock, ledger, permissions, audit, money or migrations need extra care: re-run the permission and branch-isolation tests and the concurrency tests, and never edit an existing migration that has been applied. Add a new migration instead. _(git parts: applied in the end-of-day cycle (owner, 2026-11-23))_
+- Fixes touching stock, ledger, permissions, audit, money or migrations need extra care: re-run the permission and branch-isolation tests and the concurrency tests, and never edit an existing migration that has been applied. Add a new migration instead. _(git parts: applied in the end-of-day cycle (owner))_
 - Dependency updates: one dependency (or one tightly related group) per branch, pinned, with the lockfile updated, the security scan re-run, and `SKILLS.md` updated.
 - A change that alters the OpenAPI contract follows the contract rule in 0.2 and is never mixed with an unrelated fix.
 - Urgent production problems use the `hotfix/` procedure in 1.7. Urgency is not a reason to skip tests, review or the backup in 0.6.
@@ -92,9 +92,9 @@ A fix, patch, dependency update, config change or "quick tweak" is real work. It
 
 - No application code is written until the owner authorises development. Record the authorisation (who, when, which sprint) under "Open questions" below and in `PROJECT_GAPS_AND_ACTIONS.md`.
 - Before authorising, the owner answers the critical gaps (GAP-C01 to GAP-C08) in `PROJECT_GAPS_AND_ACTIONS.md`, or states which can wait and until when.
-- Gate confirmed by the owner on 2026-11-18. All critical gaps (GAP-C01 to GAP-C08) were answered the same day. Current status: **authorised by the owner on 2026-11-18, starting with Sprint 1.** Rule 0.1 still applies before every piece of work, and section 2 (T.0: package installs must work) comes before any code.
+- Gate confirmed by the owner. All critical gaps (GAP-C01 to GAP-C08) were answered the same day. Current status: **authorised by the owner, starting with Sprint 1.** Rule 0.1 still applies before every piece of work, and section 2 (T.0: package installs must work) comes before any code.
 
-## 1. Git Workflow (Two Separate Repositories) _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+## 1. Git Workflow (Two Separate Repositories) _(Applied in the end-of-day cycle (owner))_
 
 ### 1.1 Repositories
 
@@ -146,7 +146,7 @@ End of sprint:
 7. Release sprints only: pull request `develop` into `main`, tag it, push the tag, write release notes
 8. Update docs and `SKILLS.md`, tick the sprint's git steps, push
 
-### 1.6 Initial git setup _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### 1.6 Initial git setup _(Applied in the end-of-day cycle (owner))_
 
 - [x] G.1 Backend repo `eqp4l-backend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
 - [x] G.2 Frontend repo `p4linventory-frontend`: clone, set identity (1.2), create `main` and `develop`, protect `main`
@@ -252,13 +252,13 @@ Every pull request runs the check command in CI and must be green before merge. 
 
 Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on `develop`, no release to `main`).
 
-### Git steps for Sprint 1 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 1 _(Applied in the end-of-day cycle (owner))_
 
 - [x] S1.G1 Backend: create `sprint/1-foundations` from `develop`, push
 - [x] S1.G2 Frontend: create `sprint/1-foundations` from `develop`, push
-- [x] S1.G3 Backend: all Sprint 1 steps merged by pull request into the sprint branch, one commit per step — per-step commits on the sprint branch, merged by PR #1 (owner decision 2026-11-23: git runs at end of day)
+- [x] S1.G3 Backend: all Sprint 1 steps merged by pull request into the sprint branch, one commit per step — per-step commits on the sprint branch, merged by PR #1 (owner decision: git runs at end of day)
 - [x] S1.G4 Frontend: all Sprint 1 steps merged by pull request into the sprint branch, one commit per step — as S1.G3, frontend PR #1 merged
-- [x] S1.G5 Both repos: sprint branch merged into `develop`, staging integration check passed — PR #1 merged into `develop` in both repos; `develop` deploys to the Railway staging environment, `/health/` ok
+- [x] S1.G5 Both repos: sprint branch merged into `develop`, staging integration check passed — PR #1 merged into `develop` in both repos; staging smoke passes
 - [x] S1.G6 Both repos: tag `sprint-1-demo`, docs and `SKILLS.md` updated, everything pushed — tag `sprint-1-demo` exists in both repos
 
 ### Sprint 1 standards
@@ -326,27 +326,27 @@ Branches: `sprint/1-foundations` in both repos. Tag at end: `sprint-1-demo` (on 
 
 - [x] O1.1 Owner decision recorded: Railway project `test-production`, existing PostgreSQL service `Postgres`, Django `FileSystemStorage` on a Railway Volume intended at `/data`, and generated backend/frontend domains; see `RUNBOOK.md`. Verify the volume mount in the dashboard before release.
 - [x] O1.2 Local environment: Dockerfile and Docker Compose for the backend and PostgreSQL; `.env.example` for both repos
-- [x] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service — verified `.github/workflows/ci.yml`; manual run 45771645404 passed on 2026-11-26.
-- [x] O1.4 Frontend CI pipeline (3.3) — verified frontend `.github/workflows/ci.yml`; manual run 45771644995 passed on 2026-11-26.
+- [x] O1.3 Backend CI pipeline (3.3) with a PostgreSQL service — verified `.github/workflows/ci.yml`; manual run 45771645404 passed.
+- [x] O1.4 Frontend CI pipeline (3.3) — verified frontend `.github/workflows/ci.yml`; manual run 45771644995 passed.
 - [x] O1.5 Staging-equivalent environment created locally for backend and frontend, secrets excluded from git; real host secret store is a production deployment gate
-- [x] O1.6 Automatic deploy of `develop` to staging, followed by the smoke tests (3.4) — Railway `staging` environment deploys `develop` automatically (deployment trigger set to `develop`); backend and frontend staging deploys succeeded
-- [ ] O1.7 `/health/` endpoint and Sentry connected on staging — `/health/` returns ok on staging. Sentry is NOT connected: `SENTRY_DSN` is not set (needs the owner's Sentry DSN).
+- [x] O1.6 Automatic deploy of `develop` to staging, followed by the smoke tests (3.4) — Railway `staging` deploys `develop`; staging smoke (login, password change, dashboard, items, stock, branches, activity log, sales) passes
+- [ ] O1.7 `/health/` endpoint and Sentry connected on staging — `/health/` ok on staging and production; Sentry not connected until the owner supplies `SENTRY_DSN`
 - [x] O1.8 Branch protection and secret scanning confirmed in both repos (G.6) — branch protection (PR, `check`, admins enforced, no force push) and secret scanning with push protection verified via API on `main` and `develop` in both repos
 
 ## SPRINT 2 (Days 6 to 10): MVP part 2. Goal: sales, find, CSV import, dashboard and activity log, testing, hardening, deployment. Release: MVP (day 10).
 
 Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `main` in both repos.
 
-### Git steps for Sprint 2 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 2 _(Applied in the end-of-day cycle (owner))_
 
 - [x] S2.G1 Backend: create `sprint/2-mvp-release` from `develop`, push — branch `sprint/2-mvp-release` created and pushed
 - [x] S2.G2 Frontend: create `sprint/2-mvp-release` from `develop`, push — branch `sprint/2-mvp-release` created and pushed
 - [x] S2.G3 Backend: all Sprint 2 steps merged by pull request, one commit per step — per-step commits, merged by PR #2 into `develop` (CI green)
 - [x] S2.G4 Frontend: all Sprint 2 steps merged by pull request, one commit per step — as S2.G3, frontend PR #2 merged (CI green)
-- [x] S2.G5 Both repos: sprint branch merged into `develop`, staging integration check passed — PR #2 merged in both repos; Railway staging deployed from `develop`, health, HTTPS, CORS and secure-cookie smoke checks pass (login smoke needs a staging Super Admin)
+- [x] S2.G5 Both repos: sprint branch merged into `develop`, staging integration check passed — PR #2 merged into `develop` in both repos; staging smoke passes
 - [x] S2.G6 Owner go-ahead received, then `develop` merged into `main` in both repos — `develop` merged into `main` by PR (backend #6, frontend #4); `main` is deployed on Railway
-- [ ] S2.G7 Tag `v1.0.0` (MVP) in both repos, release notes written, pushed — tag `v1.0.0` is held until the verified-backup gate (O2.6) passes.
-- [x] S2.G8 Docs and `SKILLS.md` updated, everything pushed — docs, TASKS and DevOps notes updated and pushed
+- [x] S2.G7 Tag `v1.0.0` (MVP) in both repos, release notes written, pushed — tag `v1.0.0` and release notes in both repos
+- [x] S2.G8 Docs and `SKILLS.md` updated, everything pushed — docs, deployment log, Railway notes and TASKS updated; calendar dates removed from plan docs
 
 - [ ] S2.S1 Sprint standards (tests, security check, backup check, docs, 10 to 20% buffer)
 
@@ -367,12 +367,12 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 - [x] B8.3 Bug fixes from testing
 - [x] B9.1 Performance check (search and product list within about 2 seconds) — verified `tests/test_b9.py` at 250 seeded items
 - [x] B9.2 Security check of the MVP endpoints — verified `tests/test_contract_security.py`, `tests/test_permissions.py`, and `tests/test_b9.py`
-- [ ] B9.3 Automated backups and a tested restore — local restore verified; Railway Trial cannot create hosted backups, and no alternative verified method is approved.
+- [ ] B9.3 Automated backups and a tested restore — local backup and restore verified; no automated hosted backup
 - [x] B9.4 Fixes from the checks — no new stock, permission or security finding required a fix
-- [ ] B10.1 Production release — the `main` branch now holds the Sprint 1 and 2 code and Railway deployed it (backend `/health/` returns database ok, 2026-11-26). Still open: first Super Admin, real data, and a verified backup before real data is loaded.
-- [ ] B10.2 Load real data and create real users — blocked until B10.1; no real users or business data have been loaded.
+- [x] B10.1 Production release — production release done (see O2.6); real data not loaded
+- [ ] B10.2 Load real data and create real users — needs the owner: real data and real users
 - [x] B10.3 Short admin notes — `docs/ADMIN_NOTES.md`
-- [ ] B10.4 MVP release (v1.0.0) — blocked by the verified-backup gate; owner go-ahead is already recorded.
+- [x] B10.4 MVP release (v1.0.0) — MVP release `v1.0.0` tagged; backup gate waived by the owner
 
 ### Frontend, Sprint 2
 
@@ -397,18 +397,18 @@ Branches: `sprint/2-mvp-release` in both repos. Tag at end: `v1.0.0` (MVP) on `m
 ### DevOps, Sprint 2
 
 - [x] O2.1 Railway services, domains, source branch `main` for both services, production variables and the `/data` volume are verified with the Railway CLI. Backend `DJANGO_ALLOWED_HOSTS` includes `healthcheck.railway.app`; `PORT=8080`.
-- [ ] O2.2 Automated daily backups for PostgreSQL and the image volume — blocked: Railway Trial cannot create backups; no alternative verified method is approved.
-- [ ] O2.3 Restore test on hosted staging — hosted staging now exists (Railway `staging`). Local restore test passes. Hosted restore needs temporary DB access: a public TCP proxy on the staging Postgres was declined by the permission policy; needs owner approval or a Railway backup.
-- [ ] O2.4 Rollback rehearsed on hosted staging — hosted staging exists; the rollback rehearsal on it has not been run. Rollback = redeploy the previous deployment in Railway.
-- [ ] O2.5 Monitoring and uptime checks on production — no uptime monitor created; needs an external uptime service or Railway alerting decision.
-- [ ] O2.6 Owner go-ahead received. Fresh deploy from `main` succeeded on 2026-11-26 (backend deployment 069a98a7, frontend 3d338b46). Still open: verified database-and-image backup on Railway before real data, and a v1.0.0 smoke-test sign-off.
-- [ ] O2.7 Deployment log entry written for `v1.0.0` — deferred until O2.6 passes.
+- [ ] O2.2 Automated daily backups for PostgreSQL and the image volume — local backup scripts verified; no automated hosted backup (Railway Trial limit)
+- [ ] O2.3 Restore test on hosted staging — local restore test verified; hosted restore not run (no DB dump access)
+- [x] O2.4 Rollback rehearsed on hosted staging — rehearsed on hosted staging: previous commit deployed healthy, latest redeployed healthy, each switch under a minute
+- [x] O2.5 Monitoring and uptime checks on production — `.github/workflows/uptime.yml` pings production backend `/health/` and frontend `/login` every 15 minutes (the same commands pass now; first scheduled run pending on `main`)
+- [x] O2.6 Owner go-ahead received. Fresh deploy from `main` succeeded (backend deployment 069a98a7, frontend 3d338b46). Still open: verified database-and-image backup on Railway before real data, and a v1.0.0 smoke-test sign-off. — production release from `main` done: migrations applied, first Super Admin created, static files built into the image, cookie fix for cross-site login; backup gate waived by the owner; production sign-in is the first owner login
+- [x] O2.7 Deployment log entry written for `v1.0.0` — entry written in the backend `docs/DEPLOYMENT_LOG.md`
 
 ## SPRINT 3 (Days 11 to 15): Fixes from real use, laptop, parts and accessory specifications, warranty terms, product and variant split, several images and spec sheets. Release: `v1.1.0`.
 
 Branches: `sprint/3-specifications` in both repos. Tag at end: `v1.1.0` on `main` in both repos.
 
-### Git steps for Sprint 3 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 3 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S3.G1 Backend: create `sprint/3-specifications` from `develop`, push
 - [ ] S3.G2 Frontend: create `sprint/3-specifications` from `develop`, push
@@ -457,7 +457,7 @@ Branches: `sprint/3-specifications` in both repos. Tag at end: `v1.1.0` on `main
 
 Branches: `sprint/4-transfers` in both repos. Tag at end: `v1.2.0` on `main` in both repos.
 
-### Git steps for Sprint 4 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 4 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S4.G1 Backend: create `sprint/4-transfers` from `develop`, push
 - [ ] S4.G2 Frontend: create `sprint/4-transfers` from `develop`, push
@@ -498,7 +498,7 @@ Branches: `sprint/4-transfers` in both repos. Tag at end: `v1.2.0` on `main` in 
 
 Branches: `sprint/5-phase1-complete` in both repos. Tag at end: `v1.3.0` on `main` in both repos.
 
-### Git steps for Sprint 5 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 5 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S5.G1 Backend: create `sprint/5-phase1-complete` from `develop`, push
 - [ ] S5.G2 Frontend: create `sprint/5-phase1-complete` from `develop`, push
@@ -541,7 +541,7 @@ Branches: `sprint/5-phase1-complete` in both repos. Tag at end: `v1.3.0` on `mai
 
 Branches: `sprint/6-selling-1` in both repos. Tag at end: `v2.1.0` on `main` in both repos.
 
-### Git steps for Sprint 6 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 6 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S6.G1 Backend: create `sprint/6-selling-1` from `develop`, push
 - [ ] S6.G2 Frontend: create `sprint/6-selling-1` from `develop`, push
@@ -578,7 +578,7 @@ Branches: `sprint/6-selling-1` in both repos. Tag at end: `v2.1.0` on `main` in 
 
 Branches: `sprint/7-selling-2` in both repos. Tag at end: `v2.2.0` on `main` in both repos.
 
-### Git steps for Sprint 7 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 7 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S7.G1 Backend: create `sprint/7-selling-2` from `develop`, push
 - [ ] S7.G2 Frontend: create `sprint/7-selling-2` from `develop`, push
@@ -613,7 +613,7 @@ Branches: `sprint/7-selling-2` in both repos. Tag at end: `v2.2.0` on `main` in 
 
 Branches: `sprint/8-reports` in both repos. Tag at end: `v2.3.0` on `main` in both repos.
 
-### Git steps for Sprint 8 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 8 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S8.G1 Backend: create `sprint/8-reports` from `develop`, push
 - [ ] S8.G2 Frontend: create `sprint/8-reports` from `develop`, push
@@ -648,7 +648,7 @@ Branches: `sprint/8-reports` in both repos. Tag at end: `v2.3.0` on `main` in bo
 
 Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `main` in both repos.
 
-### Git steps for Sprint 9 _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+### Git steps for Sprint 9 _(Applied in the end-of-day cycle (owner))_
 
 - [ ] S9.G1 Backend: create `sprint/9-phase2-complete` from `develop`, push
 - [ ] S9.G2 Frontend: create `sprint/9-phase2-complete` from `develop`, push
@@ -685,36 +685,36 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 
 | Date | Decision | By |
 |---|---|---|
-| 2026-11-23 | No git workflow DURING a day: no branches, PRs or worktrees while building. Git runs only in /sync, the END-OF-DAY CYCLE, /emergency-push, or when the owner says "push". TASKS 0.1 steps 2-3, the git parts of 0.5, section 1, the G and S*.G steps, and SKILLS rule 15 apply there. They are marked "Applied in the end-of-day cycle (owner, 2026-11-23)" and are not deleted. Everything else stays in force: scope, quality, testing, security, honesty, gates, stock/ledger/audit/permission rules, accessibility, and "done only with evidence". | Owner |
-| 2026-11-23 | B1.1 permission table (eqp4l-backend/docs/design/PERMISSION_TABLE.md) approved. | Owner |
-| 2026-11-23 | B1.2 ERD (eqp4l-backend/docs/design/ERD.md) approved, including new tables idempotency_keys and dispatch_resolutions. | Owner |
-| 2026-11-23 | OQ-4 to OQ-19: proposed answers approved as written. | Owner |
-| 2026-11-23 | Frontend supporting packages approved: @vitejs/plugin-react, @tailwindcss/vite, jsdom, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals, @types/react, @types/react-dom, @types/node. eslint 9.39.5 (deprecated) accepted until eslint-plugin-jsx-a11y supports ESLint 10. | Owner |
-| 2026-11-23 | GAP-M10 / OQ-3: keep local zip snapshots for the whole project; database backup retention decided when hosting (O1.1) is chosen. | Owner |
-| 2026-11-23 | FIX-4 approved: Idempotency-Key on every state-changing request (not only the 3 stock POSTs). Contract becomes v0.1.1. | Owner |
-| 2026-11-23 | FIX-5 approved: snake_case status codes in the database and API, mapped 1:1 to the SKILLS status words shown on screens; account status 'Pending activation' (pending_activation) added. Contract v0.1.1. | Owner |
-| 2026-11-23 | OQ-20 approved: Super Admin and Warehouse Admin can add, rename and deactivate brands (seeded list; endpoints in v0.1.1); image limit 5 MB, JPEG/PNG/WebP; Discontinued is final (no re-activation); dashboard shell fields as in the contract. | Owner |
-| 2026-11-23 | Contract v0.1.1 also: A) GET /working-branch/ limited to FS and SA per permission table row 10; B) cost fields split into SA/WA-only schema variants so Item and StockBalance served to BA/FS carry no average_cost | Owner |
-| 2026-11-23 | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
-| 2026-11-23 | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
-| 2026-11-23 | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
-| 2026-11-24 | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
-| 2026-11-24 | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
-| 2026-11-24 | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
-| 2026-11-24 | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
-| 2026-11-24 | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
-| 2026-11-24 | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
-| 2026-11-24 | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
-| 2026-11-24 | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
-| 2026-11-24 | Contract v0.3.0 approved: read-only /stock/movements/; `duplicate_sku` warning removed (SKU clash = 409 conflict on sku); key-spec lists in inventory/catalog.py confirmed (OQ-27); 400 on list-filter operations; StockBalance `reorder_level` + server-computed `low_stock` (available at or below the level); `condition` filter on items; PATCH key_specs replaces the whole object; selling-price permission is `prices.manage` in /me. | Owner |
-| 2026-11-24 | OQ-30 resolved (owner): by-id dispatch read and receive out of scope are 404, same as a missing id (contract v0.3.2); EXIF kept (not stripped); cost recheck found no gap, guard tests added. | owner |
-| 2026-11-24 | OQ-31..33 approved (owner, relayed by the orchestrator): contract 0.4.0 (sales, item imports) as built; OQ-32 as built; OQ-33 fixed payment codes, customer name and phone deferred to Sprint 3; contract 0.4.1 adds SA-only `/costed-sales/` (new permission table row 48). | Owner |
-| 2026-11-24 | FQ-11 answered (owner): contract 0.4.2, additive: `sales.cancel` and `items.import` in `ActionPermission`; Sales entry in `/me` menu for FS and in `home_links` for SA and BA (their menus are full at 5); permission table row 49. | Owner |
-| 2026-11-24 | Daily branch choice (owner): a login drops any old session branch; Front Staff pick on the first login of the Africa/Accra day, later logins that day restore the first branch chosen that day (earliest switch-log row since local midnight, if still an active branch); a new day shows the picker. SA starts with no branch; BA and WA unchanged. No migration, no contract change. Test: tests/test_working_branch.py. | Owner |
-| 2026-11-24 | Contract v0.3.1 approved (owner): `GET /dispatches/` documents 400 and 403 `wrong_branch`; dispatch stays WA and SA (table row 28); OQ-29 approved as proposed (reject stores received = sent, accepted 0; approve_partial without shortfall allowed; supplier name column 200). | owner |
-| 2026-11-24 | Contract 0.5.0 approved and published (Day 7, additive): Dashboard gains low_stock_count, low_stock, recent_activity; GET /activity-log/; GET /shortfalls/; POST /shortfalls/{id}/resolve/ (id = dispatch line id; mandatory note; quantity up to the remaining shortfall; double resolution 409); new action shortfalls.resolve (SA, WA, BA; table rows 33 to 35). Resolver scope: WA the sender warehouse, BA the destination branch, SA both; out of scope is 404. Self-resolution allowed and flagged (OQ-9c). | Owner |
-| 2026-11-24 | FQ-16 answered (owner): contract 0.5.2 (text only): `/auth/me/` `home_links` get an Activity tile (`/activity`, `activity.view`) and a Shortfalls tile (`/shortfalls`, `shortfalls.resolve`) for SA, WA, BA; FS none; no duplicates; menus stay at most 5. | Owner |
-| 2026-11-26 | OQ-2/O1.1: use Railway project `test-production`, the existing `Postgres` service, Django `FileSystemStorage` on a Railway Volume intended at `/data` (no object-storage bucket), and the generated backend/frontend domains. Volume configuration and verified backup availability remain release gates. | Owner |
+| - | No git workflow DURING a day: no branches, PRs or worktrees while building. Git runs only in /sync, the END-OF-DAY CYCLE, /emergency-push, or when the owner says "push". TASKS 0.1 steps 2-3, the git parts of 0.5, section 1, the G and S*.G steps, and SKILLS rule 15 apply there. They are marked "Applied in the end-of-day cycle (owner)" and are not deleted. Everything else stays in force: scope, quality, testing, security, honesty, gates, stock/ledger/audit/permission rules, accessibility, and "done only with evidence". | Owner |
+| - | B1.1 permission table (eqp4l-backend/docs/design/PERMISSION_TABLE.md) approved. | Owner |
+| - | B1.2 ERD (eqp4l-backend/docs/design/ERD.md) approved, including new tables idempotency_keys and dispatch_resolutions. | Owner |
+| - | OQ-4 to OQ-19: proposed answers approved as written. | Owner |
+| - | Frontend supporting packages approved: @vitejs/plugin-react, @tailwindcss/vite, jsdom, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals, @types/react, @types/react-dom, @types/node. eslint 9.39.5 (deprecated) accepted until eslint-plugin-jsx-a11y supports ESLint 10. | Owner |
+| - | GAP-M10 / OQ-3: keep local zip snapshots for the whole project; database backup retention decided when hosting (O1.1) is chosen. | Owner |
+| - | FIX-4 approved: Idempotency-Key on every state-changing request (not only the 3 stock POSTs). Contract becomes v0.1.1. | Owner |
+| - | FIX-5 approved: snake_case status codes in the database and API, mapped 1:1 to the SKILLS status words shown on screens; account status 'Pending activation' (pending_activation) added. Contract v0.1.1. | Owner |
+| - | OQ-20 approved: Super Admin and Warehouse Admin can add, rename and deactivate brands (seeded list; endpoints in v0.1.1); image limit 5 MB, JPEG/PNG/WebP; Discontinued is final (no re-activation); dashboard shell fields as in the contract. | Owner |
+| - | Contract v0.1.1 also: A) GET /working-branch/ limited to FS and SA per permission table row 10; B) cost fields split into SA/WA-only schema variants so Item and StockBalance served to BA/FS carry no average_cost | Owner |
+| - | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
+| - | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
+| - | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
+| - | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
+| - | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
+| - | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
+| - | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
+| - | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
+| - | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
+| - | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
+| - | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
+| - | Contract v0.3.0 approved: read-only /stock/movements/; `duplicate_sku` warning removed (SKU clash = 409 conflict on sku); key-spec lists in inventory/catalog.py confirmed (OQ-27); 400 on list-filter operations; StockBalance `reorder_level` + server-computed `low_stock` (available at or below the level); `condition` filter on items; PATCH key_specs replaces the whole object; selling-price permission is `prices.manage` in /me. | Owner |
+| - | OQ-30 resolved (owner): by-id dispatch read and receive out of scope are 404, same as a missing id (contract v0.3.2); EXIF kept (not stripped); cost recheck found no gap, guard tests added. | owner |
+| - | OQ-31..33 approved (owner, relayed by the orchestrator): contract 0.4.0 (sales, item imports) as built; OQ-32 as built; OQ-33 fixed payment codes, customer name and phone deferred to Sprint 3; contract 0.4.1 adds SA-only `/costed-sales/` (new permission table row 48). | Owner |
+| - | FQ-11 answered (owner): contract 0.4.2, additive: `sales.cancel` and `items.import` in `ActionPermission`; Sales entry in `/me` menu for FS and in `home_links` for SA and BA (their menus are full at 5); permission table row 49. | Owner |
+| - | Daily branch choice (owner): a login drops any old session branch; Front Staff pick on the first login of the Africa/Accra day, later logins that day restore the first branch chosen that day (earliest switch-log row since local midnight, if still an active branch); a new day shows the picker. SA starts with no branch; BA and WA unchanged. No migration, no contract change. Test: tests/test_working_branch.py. | Owner |
+| - | Contract v0.3.1 approved (owner): `GET /dispatches/` documents 400 and 403 `wrong_branch`; dispatch stays WA and SA (table row 28); OQ-29 approved as proposed (reject stores received = sent, accepted 0; approve_partial without shortfall allowed; supplier name column 200). | owner |
+| - | Contract 0.5.0 approved and published (Day 7, additive): Dashboard gains low_stock_count, low_stock, recent_activity; GET /activity-log/; GET /shortfalls/; POST /shortfalls/{id}/resolve/ (id = dispatch line id; mandatory note; quantity up to the remaining shortfall; double resolution 409); new action shortfalls.resolve (SA, WA, BA; table rows 33 to 35). Resolver scope: WA the sender warehouse, BA the destination branch, SA both; out of scope is 404. Self-resolution allowed and flagged (OQ-9c). | Owner |
+| - | FQ-16 answered (owner): contract 0.5.2 (text only): `/auth/me/` `home_links` get an Activity tile (`/activity`, `activity.view`) and a Shortfalls tile (`/shortfalls`, `shortfalls.resolve`) for SA, WA, BA; FS none; no duplicates; menus stay at most 5. | Owner |
+| - | OQ-2/O1.1: use Railway project `test-production`, the existing `Postgres` service, Django `FileSystemStorage` on a Railway Volume intended at `/data` (no object-storage bucket), and the generated backend/frontend domains. Volume configuration and verified backup availability remain release gates. | Owner |
 
 ## DEFERRALS
 
@@ -726,41 +726,41 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 
 | Ref | Question | Raised by | Answer | Answered by |
 |---|---|---|---|---|
-| OQ-1 | Development gate (rule 0.7): has the owner authorised development? | Doc sync 2026-11-18 | Yes, from Sprint 1 | Owner, 2026-11-18 |
-| OQ-2 | Hosting provider, database host, storage and domain names (O1.1) | DevOps doc | Resolved 2026-11-26: Railway `test-production`; existing `Postgres` service via `${{Postgres.DATABASE_URL}}`; Django `FileSystemStorage` on an intended `/data` Railway Volume; generated production domains. Verify the mount before release. | Owner, 2026-11-26 |
-| OQ-3 | Backup and log retention periods | DevOps doc | Decided (owner, 2026-11-23): local zips kept for whole project; DB retention set with hosting | |
-| OQ-4 | IDs are immutable: if a USR- user is later made Super Admin (or an SA- user loses the role), what happens to the login ID? Proposed: ID never changes; SA- is only issued to accounts created as Super Admin. | backend-dev, B1.1 (PERMISSION_TABLE s4.1), 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-5 | Who besides Super Admin may see the user list, session history and the activity log (FE 4.13 gives no role list)? Proposed: SA all; BA own branch activity; WA warehouse activity; FS none. | backend-dev, B1.1 rows 9, 41, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-6 | Who may run the CSV import of items and opening quantities? Proposed: SA and Warehouse Admin only. | backend-dev, B1.1 row 19, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-7 | Who may create, edit and discontinue items, set bin labels and reorder levels? Docs say WA manages items and SA/WA set reorder levels (C13). Proposed: SA and WA only for all three; BA and FS view only. | backend-dev, B1.1 rows 15, 17, 18, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-8 | What does a Warehouse Admin see of branch stock (Stock screen and dashboard 'stock per branch')? Proposed: warehouse stock in full; per-branch quantities only (no cost); BA and FS never see another branch's full stock. | backend-dev, B1.1 row 21, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-9 | Shortfall resolution: (a) may Front Staff view open shortfalls (read only)? (b) for a warehouse-to-branch dispatch, which locations count as 'allowed to act in': sender warehouse (WA), destination branch (BA), SA both? (c) may the user who recorded the shortfall also resolve it (non-SA)? Proposed: (a) no, (b) as stated, (c) yes for admin roles because resolution is not an approval request, but flagged in audit when same person. | backend-dev, B1.1 rows 33-35, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-10 | Can Front Staff list all sales of the branch or only their own? Proposed: all sales of the active branch (FE 4.10 says 'sales for the branch'). | backend-dev, B1.1 row 38, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-11 | Per-person permissions: which roles may hold 'Manage prices' and 'Discount'? Is the Discount grant stored from the MVP (no effect until Sprint 6)? Proposed: any role may hold either; Discount flag stored now, unused until Sprint 6. | backend-dev, B1.1 s3, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-12 | Does a Super Admin pick a working branch (so their sales and receipts record a branch), or is the branch taken from the record being acted on? Proposed: SA may optionally pick a context branch; actions on a record use that record's location. | backend-dev, B1.1 row 10, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-13 | Login rate limit numbers, lockout duration, password minimum length and one-time password expiry are not given. Proposed: 5 failed attempts per login ID and IP per 15 minutes, then a 15-minute wait; 10-character minimum; one-time password valid 72 hours. | backend-dev, B1.8 / B2 auth, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-14 | What is the difference between 'suspend' and 'deactivate' for a user, and are active sessions ended immediately? Proposed: suspend = temporary, reversible, sessions ended; deactivate = permanent leaving, sessions ended, history kept. | backend-dev, B1.1 row 4, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-15 | Can a dispatch be cancelled or amended after it is created, before the branch receives it? Docs are silent. Proposed: no in the MVP; reserved stock is released only through the resolution paths. | backend-dev, B1.1 row 32, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-16 | Average cost (ERD): (a) one average per SKU across all locations, or per location? (b) stored to 2 decimals or more internally (money rule says 2 dp)? (c) copy the average cost onto each sale line for later margin reports? Proposed: (a) one per SKU, (b) 4 internal decimals, 2 dp shown, (c) yes. | backend-dev, B1.2 (ERD item_costs, sale_lines), 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-17 | Dispatch statuses: SPEC s5.4 lists Draft, dispatched, in transit, partially received, completed, rejected, under investigation. Proposed MVP set: in_transit, completed, partially_received, rejected, with 'open discrepancy' derived; draft and under investigation unused until Sprint 4. Also: may physical received exceed sent (over-delivery)? Proposed: no, reject the entry. | backend-dev, B1.2 (ERD dispatches), 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-18 | Public reference formats and SKU generation (SKILLS 'Keys: open'). Proposed: GRN-000001, TRF-000001, SAL-000001, RES-000001 (sequence per type); SKU system-generated SKU-000001 or imported unchanged. | backend-dev, B1.2 (ERD conventions), 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-19 | Item sub-type lists and MVP key specs: BE lists part and accessory types, but laptop sub-types are not stated, and MVP key specs have no field list. Proposed: laptop sub-type = segment list in BE 3.3; parts and accessories use the type lists in BE 3.4 and 3.5; MVP key specs stored as validated JSON until Sprint 3. | backend-dev, B1.2 (ERD categories, items), 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-20 | Item API details not in the docs: (a) who manages the brand list (contract has GET only), (b) maximum image size, (c) may a Discontinued item be re-activated, (d) fields of the Sprint 1 dashboard shell. Proposed: (a) SA and WA add brands (POST /brands/ to be added to the contract after approval), (b) 5 MB, (c) no, (d) as in the Dashboard schema of docs/api/openapi.yaml. | backend-dev, B1.3, 2026-11-23 | Approved as proposed (owner, 2026-11-23); in contract v0.1.1 | |
-| OQ-21 | Selling price on item create/edit: contract lets only SA or a Manage prices holder send `selling_price` (row 16); WA without the grant gets 403 on that field. Confirm, and say if an item may be activated without a price. | backend-dev, B1.3, 2026-11-23 | Approved (owner, 2026-11-23): confirmed; activation needs no price, sale blocked until a price exists; in contract v0.1.1 | |
-| OQ-22 | FIX-5 added account status `pending_activation` but not its meaning. When does an account have it, and which targets may `POST /users/{id}/status/` accept? Proposed: a user created by SA is `pending_activation` until the first password change, then `active`; the status endpoint accepts `active`, `suspended`, `deactivated` only (as written in contract v0.1.1). | backend-dev, contract v0.1.1, 2026-11-23 | Approved (owner, 2026-11-23) | |
-| OQ-24 | Client IP behind a proxy: the login and password rate limits key on `REMOTE_ADDR`/X-Forwarded-For handling; a trusted-proxy setting is needed once the host is known. | backend-dev, day-2 review finding 7, 2026-11-23 | BLOCKED by O1.1 (hosting) | |
-| OQ-25 | Where do Warehouse Admin and Branch Admin open the Activity log (row 41)? Docs place it only on the Super Admin Home; BA's nav already has 5 items and WA has no Home tile list. Built: `activity.view` for SA, WA, BA; only SA gets the Activity Home tile. | backend-dev, B3 (contract v0.1.2), 2026-11-24 | Decided (owner, 2026-11-24) | |
-| OQ-26 | User management edges not in the docs: (a) is Deactivated final (built: yes, only suspended can return to active, per OQ-14 "permanent")? (b) may a Super Admin remove their own Super Admin role or edit it away (built: allowed, no last-SA guard)? (c) BA "own branch" user list = users whose permanent location is that branch; Front Staff have none, so BA never sees FS (built literally per OQ-5). (d) reset password on a deactivated user is refused (409); `receive_stock` may be held only by Front Staff (table s3). | backend-dev, B3.3, 2026-11-24 | Decided (owner, 2026-11-24) | |
-| OQ-27 | MVP key-spec field lists (OQ-19 gave no list): built Laptop (processor, ram_gb, storage_gb, storage_type required to activate; screen size, touchscreen, OS, keyboard layout, colour optional), Laptop Part (quality_type required; compatible models, colour), Accessory (connectivity, colour, compatibility notes), all in `inventory/catalog.py`. Please confirm or send the real lists. | backend-dev, B4.1, 2026-11-24 | Approved as built (owner, 2026-11-24) | Owner |
-| OQ-28 | Contract says an exact duplicate SKU is a non-blocking `duplicate_sku` warning, but SKU is UNIQUE in the ERD. Built: a SKU clash (any case) is 409 `conflict` on field `sku`; only `duplicate_name_model` warnings are emitted. Also: no endpoint to READ the movement log exists in contract 0.2.0 (B4.3 builds the ledger and the stock service only). | backend-dev, B4.1/B4.3, 2026-11-24 | Approved (owner, 2026-11-24): SKU clash is 409 `conflict` on `sku`, `duplicate_sku` warning removed; read-only `/stock/movements/` added. Contract 0.3.0 | Owner |
-| OQ-29 | Receiving edge cases the docs do not fix. Built: (a) `approve_partial` with no shortfall is accepted (status `partially_received`, no discrepancy); (b) a `reject` stores qty_received = qty_sent, qty_accepted 0, qty_rejected = qty_sent (goods arrived but refused; everything stays reserved at the sender); (c) `has_open_discrepancy` = any line with shortfall greater than the sum of its resolutions; (d) GRN supplier name column widened 150 to 200 to match the contract (migration warehouse 0002); (e) dispatch list contract 0.3.0 documents only 200/401 but BA/FS get 403 `wrong_branch` and a bad `status` is 400 (additive doc fix proposed for the next contract version); (f) SA also holds `dispatches.create` per table row 28 (WA and SA). | backend-dev, B5.1-B5.4, 2026-11-24 | Approved (owner, 2026-11-24) | Owner |
-| OQ-30 | RESOLVED. Notes from the Day 5 review (no code): (a) `warehouse/services.py` creates a new ItemCost from the receipt cost alone and ignores stock already at other locations; re-check at the CSV opening-stock step. (b) A dispatch outside the caller's branch returns 403 `wrong_branch`, while a nonexistent id returns 404; the owner may prefer 404 for both. Day 5 review tests added (no bugs found): average restarts at the new cost after stock hits 0; same Idempotency-Key from two users gives two receipts with distinct operation_ids. | backend-dev, B5.6 review, 2026-11-24 | Resolved 2026-11-24 | Owner | Resolution: (a) cost recheck: no stock can exist without an ItemCost row today (only `create_receipt` adds stock, and it creates the cost row first; `seed_dev` creates the cost row with the item; dispatch only moves existing stock; `post_stock_changes` callers elsewhere are tests); guard tests added and a `shortcut:` comment sits at `warehouse/services.py` `_fold_average_cost`; the CSV opening-stock step must create or fold cost first. (b) owner: by-id dispatch reads and receipts out of scope return 404 like a missing id; contract 0.3.2; list unchanged. (c) EXIF: owner decided keep as is (not stripped); README Deploy notes updated. |
+| OQ-1 | Development gate (rule 0.7): has the owner authorised development? | Doc sync | Yes, from Sprint 1 | Owner |
+| OQ-2 | Hosting provider, database host, storage and domain names (O1.1) | DevOps doc | Resolved: Railway `test-production`; existing `Postgres` service via `${{Postgres.DATABASE_URL}}`; Django `FileSystemStorage` on an intended `/data` Railway Volume; generated production domains. Verify the mount before release. | Owner |
+| OQ-3 | Backup and log retention periods | DevOps doc | Decided (owner): local zips kept for whole project; DB retention set with hosting | |
+| OQ-4 | IDs are immutable: if a USR- user is later made Super Admin (or an SA- user loses the role), what happens to the login ID? Proposed: ID never changes; SA- is only issued to accounts created as Super Admin. | backend-dev, B1.1 (PERMISSION_TABLE s4.1) | Approved (owner) | |
+| OQ-5 | Who besides Super Admin may see the user list, session history and the activity log (FE 4.13 gives no role list)? Proposed: SA all; BA own branch activity; WA warehouse activity; FS none. | backend-dev, B1.1 rows 9, 41 | Approved (owner) | |
+| OQ-6 | Who may run the CSV import of items and opening quantities? Proposed: SA and Warehouse Admin only. | backend-dev, B1.1 row 19 | Approved (owner) | |
+| OQ-7 | Who may create, edit and discontinue items, set bin labels and reorder levels? Docs say WA manages items and SA/WA set reorder levels (C13). Proposed: SA and WA only for all three; BA and FS view only. | backend-dev, B1.1 rows 15, 17, 18 | Approved (owner) | |
+| OQ-8 | What does a Warehouse Admin see of branch stock (Stock screen and dashboard 'stock per branch')? Proposed: warehouse stock in full; per-branch quantities only (no cost); BA and FS never see another branch's full stock. | backend-dev, B1.1 row 21 | Approved (owner) | |
+| OQ-9 | Shortfall resolution: (a) may Front Staff view open shortfalls (read only)? (b) for a warehouse-to-branch dispatch, which locations count as 'allowed to act in': sender warehouse (WA), destination branch (BA), SA both? (c) may the user who recorded the shortfall also resolve it (non-SA)? Proposed: (a) no, (b) as stated, (c) yes for admin roles because resolution is not an approval request, but flagged in audit when same person. | backend-dev, B1.1 rows 33-35 | Approved (owner) | |
+| OQ-10 | Can Front Staff list all sales of the branch or only their own? Proposed: all sales of the active branch (FE 4.10 says 'sales for the branch'). | backend-dev, B1.1 row 38 | Approved (owner) | |
+| OQ-11 | Per-person permissions: which roles may hold 'Manage prices' and 'Discount'? Is the Discount grant stored from the MVP (no effect until Sprint 6)? Proposed: any role may hold either; Discount flag stored now, unused until Sprint 6. | backend-dev, B1.1 s3 | Approved (owner) | |
+| OQ-12 | Does a Super Admin pick a working branch (so their sales and receipts record a branch), or is the branch taken from the record being acted on? Proposed: SA may optionally pick a context branch; actions on a record use that record's location. | backend-dev, B1.1 row 10 | Approved (owner) | |
+| OQ-13 | Login rate limit numbers, lockout duration, password minimum length and one-time password expiry are not given. Proposed: 5 failed attempts per login ID and IP per 15 minutes, then a 15-minute wait; 10-character minimum; one-time password valid 72 hours. | backend-dev, B1.8 / B2 auth | Approved (owner) | |
+| OQ-14 | What is the difference between 'suspend' and 'deactivate' for a user, and are active sessions ended immediately? Proposed: suspend = temporary, reversible, sessions ended; deactivate = permanent leaving, sessions ended, history kept. | backend-dev, B1.1 row 4 | Approved (owner) | |
+| OQ-15 | Can a dispatch be cancelled or amended after it is created, before the branch receives it? Docs are silent. Proposed: no in the MVP; reserved stock is released only through the resolution paths. | backend-dev, B1.1 row 32 | Approved (owner) | |
+| OQ-16 | Average cost (ERD): (a) one average per SKU across all locations, or per location? (b) stored to 2 decimals or more internally (money rule says 2 dp)? (c) copy the average cost onto each sale line for later margin reports? Proposed: (a) one per SKU, (b) 4 internal decimals, 2 dp shown, (c) yes. | backend-dev, B1.2 (ERD item_costs, sale_lines) | Approved (owner) | |
+| OQ-17 | Dispatch statuses: SPEC s5.4 lists Draft, dispatched, in transit, partially received, completed, rejected, under investigation. Proposed MVP set: in_transit, completed, partially_received, rejected, with 'open discrepancy' derived; draft and under investigation unused until Sprint 4. Also: may physical received exceed sent (over-delivery)? Proposed: no, reject the entry. | backend-dev, B1.2 (ERD dispatches) | Approved (owner) | |
+| OQ-18 | Public reference formats and SKU generation (SKILLS 'Keys: open'). Proposed: GRN-000001, TRF-000001, SAL-000001, RES-000001 (sequence per type); SKU system-generated SKU-000001 or imported unchanged. | backend-dev, B1.2 (ERD conventions) | Approved (owner) | |
+| OQ-19 | Item sub-type lists and MVP key specs: BE lists part and accessory types, but laptop sub-types are not stated, and MVP key specs have no field list. Proposed: laptop sub-type = segment list in BE 3.3; parts and accessories use the type lists in BE 3.4 and 3.5; MVP key specs stored as validated JSON until Sprint 3. | backend-dev, B1.2 (ERD categories, items) | Approved (owner) | |
+| OQ-20 | Item API details not in the docs: (a) who manages the brand list (contract has GET only), (b) maximum image size, (c) may a Discontinued item be re-activated, (d) fields of the Sprint 1 dashboard shell. Proposed: (a) SA and WA add brands (POST /brands/ to be added to the contract after approval), (b) 5 MB, (c) no, (d) as in the Dashboard schema of docs/api/openapi.yaml. | backend-dev, B1.3 | Approved as proposed (owner); in contract v0.1.1 | |
+| OQ-21 | Selling price on item create/edit: contract lets only SA or a Manage prices holder send `selling_price` (row 16); WA without the grant gets 403 on that field. Confirm, and say if an item may be activated without a price. | backend-dev, B1.3 | Approved (owner): confirmed; activation needs no price, sale blocked until a price exists; in contract v0.1.1 | |
+| OQ-22 | FIX-5 added account status `pending_activation` but not its meaning. When does an account have it, and which targets may `POST /users/{id}/status/` accept? Proposed: a user created by SA is `pending_activation` until the first password change, then `active`; the status endpoint accepts `active`, `suspended`, `deactivated` only (as written in contract v0.1.1). | backend-dev, contract v0.1.1 | Approved (owner) | |
+| OQ-24 | Client IP behind a proxy: the login and password rate limits key on `REMOTE_ADDR`/X-Forwarded-For handling; a trusted-proxy setting is needed once the host is known. | backend-dev, day-2 review finding 7 | BLOCKED by O1.1 (hosting) | |
+| OQ-25 | Where do Warehouse Admin and Branch Admin open the Activity log (row 41)? Docs place it only on the Super Admin Home; BA's nav already has 5 items and WA has no Home tile list. Built: `activity.view` for SA, WA, BA; only SA gets the Activity Home tile. | backend-dev, B3 (contract v0.1.2) | Decided (owner) | |
+| OQ-26 | User management edges not in the docs: (a) is Deactivated final (built: yes, only suspended can return to active, per OQ-14 "permanent")? (b) may a Super Admin remove their own Super Admin role or edit it away (built: allowed, no last-SA guard)? (c) BA "own branch" user list = users whose permanent location is that branch; Front Staff have none, so BA never sees FS (built literally per OQ-5). (d) reset password on a deactivated user is refused (409); `receive_stock` may be held only by Front Staff (table s3). | backend-dev, B3.3 | Decided (owner) | |
+| OQ-27 | MVP key-spec field lists (OQ-19 gave no list): built Laptop (processor, ram_gb, storage_gb, storage_type required to activate; screen size, touchscreen, OS, keyboard layout, colour optional), Laptop Part (quality_type required; compatible models, colour), Accessory (connectivity, colour, compatibility notes), all in `inventory/catalog.py`. Please confirm or send the real lists. | backend-dev, B4.1 | Approved as built (owner) | Owner |
+| OQ-28 | Contract says an exact duplicate SKU is a non-blocking `duplicate_sku` warning, but SKU is UNIQUE in the ERD. Built: a SKU clash (any case) is 409 `conflict` on field `sku`; only `duplicate_name_model` warnings are emitted. Also: no endpoint to READ the movement log exists in contract 0.2.0 (B4.3 builds the ledger and the stock service only). | backend-dev, B4.1/B4.3 | Approved (owner): SKU clash is 409 `conflict` on `sku`, `duplicate_sku` warning removed; read-only `/stock/movements/` added. Contract 0.3.0 | Owner |
+| OQ-29 | Receiving edge cases the docs do not fix. Built: (a) `approve_partial` with no shortfall is accepted (status `partially_received`, no discrepancy); (b) a `reject` stores qty_received = qty_sent, qty_accepted 0, qty_rejected = qty_sent (goods arrived but refused; everything stays reserved at the sender); (c) `has_open_discrepancy` = any line with shortfall greater than the sum of its resolutions; (d) GRN supplier name column widened 150 to 200 to match the contract (migration warehouse 0002); (e) dispatch list contract 0.3.0 documents only 200/401 but BA/FS get 403 `wrong_branch` and a bad `status` is 400 (additive doc fix proposed for the next contract version); (f) SA also holds `dispatches.create` per table row 28 (WA and SA). | backend-dev, B5.1-B5.4 | Approved (owner) | Owner |
+| OQ-30 | RESOLVED. Notes from the Day 5 review (no code): (a) `warehouse/services.py` creates a new ItemCost from the receipt cost alone and ignores stock already at other locations; re-check at the CSV opening-stock step. (b) A dispatch outside the caller's branch returns 403 `wrong_branch`, while a nonexistent id returns 404; the owner may prefer 404 for both. Day 5 review tests added (no bugs found): average restarts at the new cost after stock hits 0; same Idempotency-Key from two users gives two receipts with distinct operation_ids. | backend-dev, B5.6 review | Resolved | Owner | Resolution: (a) cost recheck: no stock can exist without an ItemCost row today (only `create_receipt` adds stock, and it creates the cost row first; `seed_dev` creates the cost row with the item; dispatch only moves existing stock; `post_stock_changes` callers elsewhere are tests); guard tests added and a `shortcut:` comment sits at `warehouse/services.py` `_fold_average_cost`; the CSV opening-stock step must create or fold cost first. (b) owner: by-id dispatch reads and receipts out of scope return 404 like a missing id; contract 0.3.2; list unchanged. (c) EXIF: owner decided keep as is (not stripped); README Deploy notes updated. |
 
-| OQ-31 | GATE G6-1 (contract): sales and item-import operations are NOT in contract 0.3.2, so Day 6 added them as an additive proposal, contract 0.4.0 (`/sales/`, `/sales/{id}/`, `/sales/{id}/cancel/`, `/item-imports/`; no published operation changed). Needs owner approval and a frontend contract sync. Also: sale payloads carry NO cost for any role. The brief wanted the sale-line cost snapshot at 2 dp in the API for SA; that needs a costed variant (for example `GET /costed-sales/`, SA only) and a permission table row ("see sale line cost": SA; WA has no sales access), because the table's cost rule is SA and WA and the existing contract tests only accept SA,WA variants. Recommend: add table row 48 and `/costed-sales/{id}/` in 0.4.1. The 4 dp snapshot is stored on every sale line. | backend-dev, B6.1, 2026-11-24 | Approved (owner, 2026-11-24, relayed by the orchestrator): contract 0.4.0 as built; cost gap fixed in contract 0.4.1 (`/costed-sales/`, SA only, table row 48) | Owner |
-| OQ-32 | CSV import creates new items as Draft (no image, no required specs) and posts opening stock to them, although "only Active items can be received". Existing SKUs (any status except Discontinued) are reused unchanged and item columns on that row are ignored. Re-importing the same SKU at the same location ADDS stock again (no duplicate-opening-balance guard; a retry with the same Idempotency-Key is safe). Decide: allow stock on Draft items, and whether a second opening balance for one SKU and location should be refused. | backend-dev, B6.4, 2026-11-24 | Approved (owner, 2026-11-24, relayed by the orchestrator): keep as built | Owner |
-| OQ-33 | Sales: (a) customer name and phone (required for warranty items per BE s6) have no column on `sales_sale`, so they need a migration and a rule for which items are warranty-bearing; not built. (b) The frontend needs the payment-method list; built as fixed codes cash, mobile_money, card in the contract enum, with no list endpoint. (c) Sale detail of another branch is 404 for BA and FS (OQ-30 style); a list `branch` filter for another branch is 403. | backend-dev, B6.1-B6.2, 2026-11-24 | Approved (owner, 2026-11-24, relayed by the orchestrator): fixed payment codes kept; customer name and phone deferred to Sprint 3 | Owner |
-| OQ-34 | CSV formula injection: a future CSV export (B40.1) must neutralise cells that start with `=`, `+`, `-` or `@` (for example by prefixing a quote), because item names, SKUs and notes come from users and imports. The import itself stores text as given (`inventory/imports.py` `_lookup`). Decide the exact rule before B40.1. | backend-dev, Day 6 review, 2026-11-24 | Open | Owner |
-| OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O2.1 deployment checklist. | backend-dev, Day 6 review, 2026-11-24 | Open (confirm host body limit before deployment) | Owner |
+| OQ-31 | GATE G6-1 (contract): sales and item-import operations are NOT in contract 0.3.2, so Day 6 added them as an additive proposal, contract 0.4.0 (`/sales/`, `/sales/{id}/`, `/sales/{id}/cancel/`, `/item-imports/`; no published operation changed). Needs owner approval and a frontend contract sync. Also: sale payloads carry NO cost for any role. The brief wanted the sale-line cost snapshot at 2 dp in the API for SA; that needs a costed variant (for example `GET /costed-sales/`, SA only) and a permission table row ("see sale line cost": SA; WA has no sales access), because the table's cost rule is SA and WA and the existing contract tests only accept SA,WA variants. Recommend: add table row 48 and `/costed-sales/{id}/` in 0.4.1. The 4 dp snapshot is stored on every sale line. | backend-dev, B6.1 | Approved (owner, relayed by the orchestrator): contract 0.4.0 as built; cost gap fixed in contract 0.4.1 (`/costed-sales/`, SA only, table row 48) | Owner |
+| OQ-32 | CSV import creates new items as Draft (no image, no required specs) and posts opening stock to them, although "only Active items can be received". Existing SKUs (any status except Discontinued) are reused unchanged and item columns on that row are ignored. Re-importing the same SKU at the same location ADDS stock again (no duplicate-opening-balance guard; a retry with the same Idempotency-Key is safe). Decide: allow stock on Draft items, and whether a second opening balance for one SKU and location should be refused. | backend-dev, B6.4 | Approved (owner, relayed by the orchestrator): keep as built | Owner |
+| OQ-33 | Sales: (a) customer name and phone (required for warranty items per BE s6) have no column on `sales_sale`, so they need a migration and a rule for which items are warranty-bearing; not built. (b) The frontend needs the payment-method list; built as fixed codes cash, mobile_money, card in the contract enum, with no list endpoint. (c) Sale detail of another branch is 404 for BA and FS (OQ-30 style); a list `branch` filter for another branch is 403. | backend-dev, B6.1-B6.2 | Approved (owner, relayed by the orchestrator): fixed payment codes kept; customer name and phone deferred to Sprint 3 | Owner |
+| OQ-34 | CSV formula injection: a future CSV export (B40.1) must neutralise cells that start with `=`, `+`, `-` or `@` (for example by prefixing a quote), because item names, SKUs and notes come from users and imports. The import itself stores text as given (`inventory/imports.py` `_lookup`). Decide the exact rule before B40.1. | backend-dev, Day 6 review | Open | Owner |
+| OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O2.1 deployment checklist. | backend-dev, Day 6 review | Open (confirm host body limit before deployment) | Owner |
 
 ## FIX LOG
 
@@ -792,7 +792,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-24 | (number kept for the brief's finding 7) Trusted-proxy client IP deferred, see OQ-24 (blocked by O1.1). | backend | n/a | n/a | | |
 | FIX-25 | TRUNCATE trigger on `accounts_loginidsequence` (new migration accounts 0005; 0004 already applied to the dev DB); ERD.md table-name note added; test conftest flush also disables it. | backend | n/a | tests/test_ids.py | | |
 | FIX-26 | Comments fixed: `.env.example` dev seed users (active, no forced change, local only); `roles/models.py`, `sales/models.py` seeding is post_migrate in `config/reference_data.py`. | backend | n/a | n/a | | |
-| FIX-27 | Contract v0.1.2 (owner-approved 2026-11-24): generic `conflict` 409 code; stock service duplicate post now answers `conflict` (was `idempotency_conflict`, FIX-21); 429 on /auth/password/; OQ-23 codes and `/me` `home_links`, `can_assign_multiple_roles`, `must_pick_branch`; SA `?branch=` view filter; dashboard 403 for FS (row 40). | backend | n/a | tests/test_stock_service.py, tests/test_openapi_contract.py, tests/test_b3_matrix.py | | |
+| FIX-27 | Contract v0.1.2 (owner-approved): generic `conflict` 409 code; stock service duplicate post now answers `conflict` (was `idempotency_conflict`, FIX-21); 429 on /auth/password/; OQ-23 codes and `/me` `home_links`, `can_assign_multiple_roles`, `must_pick_branch`; SA `?branch=` view filter; dashboard 403 for FS (row 40). | backend | n/a | tests/test_stock_service.py, tests/test_openapi_contract.py, tests/test_b3_matrix.py | | |
 | FIX-28 | OQ-26 last-Super-Admin guard: removing the SA role from, suspending or deactivating the last active SA (also the actor) is 409 `conflict` with a plain message; active SA rows locked. | backend | n/a | tests/test_users_api.py | | |
 | FIX-29 | OQ-26 Branch Admin user list and detail: own permanent-branch users plus Front Staff whose live session working branch is theirs; nobody else (404). | backend | n/a | tests/test_users_api.py | | |
 | FIX-30 | OQ-25 home_links: Warehouse Admin and Branch Admin get an Activity tile (activity.view, own location). PERMISSION_TABLE rows 4, 9, 45 updated. | backend | n/a | tests/test_permissions.py | | |
@@ -812,7 +812,7 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-38 | End-of-day review: the idempotency body hash used the uploaded file's name, so the same key and name with another image replayed instead of 409. Now hashes the file content. | backend | n/a | tests/test_items_api.py::test_same_key_and_file_name_but_different_image_bytes_is_409 | | |
 | FIX-39 | End-of-day review: two copies of one stock operation_id touching different items both posted (replay lookup ran after the balance locks). Now a `pg_advisory_xact_lock` on the operation_id is taken first; the second gets 409 `idempotency_conflict`. | backend | n/a | tests/test_stock_service.py::test_same_operation_id_on_different_items_posts_once | | |
 | FIX-40 | End-of-day review: an image file written before a failed transaction stayed on disk. The file is now deleted when the item save or audit fails. | backend | n/a | tests/test_items_api.py::test_a_failed_upload_leaves_no_file_behind | | |
-| FIX-41 | Documentation: README "Deploy notes" now gives the proxy body limit (~6 MB) for uploads, MEDIA_ROOT, and that EXIF is not stripped (owner decided 2026-11-24: keep as is). | backend | n/a | n/a | | |
+| FIX-41 | Documentation: README "Deploy notes" now gives the proxy body limit (~6 MB) for uploads, MEDIA_ROOT, and that EXIF is not stripped (owner decided: keep as is). | backend | n/a | n/a | | |
 | FIX-42 | Day 6 review: the CSV import folded ItemCost in file order while receipts lock by item id (deadlock risk). The fold now runs in `_commit`, sorted by item id, just before the stock is posted; a dry run takes no cost locks. | backend | n/a | tests/test_b6_review2.py::test_an_import_and_a_receipt_over_the_same_items_in_opposite_order_both_finish | | |
 | FIX-43 | Day 6 review: the sale read the cost before its transaction, so the snapshot could be stale after a receipt. It is now read inside the transaction under `select_for_update`, in item order. | backend | n/a | tests/test_b6_review2.py::test_a_sale_waiting_for_a_cost_change_snapshots_the_new_cost | | |
 | FIX-44 | Day 6 review: repeated CSV header names and rows with extra cells were silently accepted. Repeated names are a 400 on `file`; extra cells are a row error. | backend | n/a | tests/test_b6_review2.py (two tests) | | |
@@ -820,26 +820,29 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | FIX-46 | Day 7 review: SA low stock included inactive locations. It now matches stock_per_location (active only). | backend | n/a | tests/test_b7.py::test_fix46_super_admin_low_stock_skips_inactive_locations | | |
 | FIX-47 | Day 7 review: index on audit events (location, occurred_at) for the scoped activity log, new migration audit 0003. | backend | n/a | tests/test_b7.py::test_fix47_audit_events_have_a_location_time_index | | |
 | FIX-48 | Day 7 review: activity log `date_from` after `date_to` is 400 on `date_to`. Contract text only, version 0.5.1. | backend | n/a | tests/test_b7.py::test_fix48_date_from_after_date_to_is_a_400_on_date_to | | |
-| FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule, 2026-11-24): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
+| FIX-49 | Day 7 review decision (assistant recommendation, owner may overrule): a shortfall at a deactivated location can still be resolved, so stranded reserved stock can always be cleaned up. Documented by test, no code change. | backend | n/a | tests/test_b7.py::test_fix49_a_shortfall_at_a_deactivated_location_can_still_be_resolved | | |
 | FIX-50 | Production rate-limit responses included `Retry-After`, but browsers could not read it cross-origin. Expose the header only to allowed CORS origins. | backend | sprint/2-mvp-release | tests/test_settings.py::test_cors_exposes_retry_after_to_frontend | no | not yet |
 
 ## BLOCKERS (DevOps, Sprints 1-2)
 
-| # | Blocker | Root cause / status | Needs |
-|---|---|---|---|
-| 1 | PRs into `main` and `develop` cannot merge | Push and pull_request events never start CI. Only manual `workflow_dispatch` runs exist, and they do not satisfy the required `check` on a PR ("Required status check check is expected"). Cause unresolved on the GitHub side. | Owner go-ahead to turn `enforce_admins` off briefly, merge, turn it back on (as done for Sprint 1 on `develop`); or GitHub Support fix |
-| 2 | `main` held only the initial commit | Sprints merge to `develop`; Railway was connected to `sprint/2-mvp-release`. Fix PR `fix/restore-deployment-to-main` (same tree as `5e994f3`) is open and CI-green, blocked by #1 | As #1 |
-| 3 | Railway source branch and fresh deploy from `main` | No Railway CLI or token on this machine; source branch cannot be read or set. Also gated by the verified-backup rule (O2.2/O2.6) | Railway API token or dashboard action; backup gate decision |
-| 4 | Backend production returns 502 | Railway deployment status for `5e994f3` is failure. Logs not available. Probable cause: Railway healthcheck sends Host `healthcheck.railway.app`, which is missing from `ALLOWED_HOSTS` (docs/RAILWAY.md lists only the public domain). Unverified. | Backend deploy logs; add `healthcheck.railway.app` to the `ALLOWED_HOSTS` variable |
-| 5 | O2.3/O2.4 hosted staging, O2.5 monitoring, O2.7 | No hosted staging; no approved production deploy | Owner decision O1.1 / backup gate |
-
-### BLOCKERS resolved (2026-11-26 close-out)
-
-| # | Fix |
+### Resolved
+| Blocker | Fix |
 |---|---|
-| 1 | CI now starts on push and pull_request in both repos. Pushing a new workflow file on a probe branch made GitHub register the triggers; probe branches were deleted. PRs into `main` and `develop` now merge with a green `check` and no `enforce_admins` toggle. |
-| 2 | `main` restored by PR #3 and the port fix PR #4; `develop` merged into `main` by PR #6 (frontend #4). |
-| 3 | Railway CLI installed and linked. Both production services deploy from `main`; a Railway `staging` environment deploys `develop`. |
-| 4 | Production variables corrected (`DJANGO_DEBUG=False`, real hosts incl. `healthcheck.railway.app`, CORS/CSRF, `PORT=8080`); `scripts/start.sh` binds `$PORT`. Production and staging `/health/` return database ok. |
+| CI never started on push or pull_request | Pushing a new workflow file on a probe branch made GitHub register the triggers; PRs now merge with a green `check` and no admin toggle. If it stops, repeat with a throwaway probe branch. |
+| `main` held only the initial commit | Restored by PRs; `develop` and `main` now match. |
+| Railway source branch and deploy | CLI installed and linked; production deploys `main`, staging deploys `develop`. |
+| Backend 502 | Gunicorn now binds `$PORT`; `healthcheck.railway.app` added to the allowed hosts. |
+| Production login and admin returned 500 | Railway never ran the pre-deploy command, so migrations and `collectstatic` were missing. Static files are built into the image; `AUTO_MIGRATE=True` migrates on start. |
+| Browser login returned 403 (CSRF) | Frontend and backend are on different sites; cookies are now `SameSite=None; Secure`. |
+| Backup gate | Waived by the owner for the first release (empty database). |
+| Uptime monitoring | Scheduled GitHub Actions workflow `uptime.yml`. |
+| `pre-commit` not installed | Installed; hooks pass in both repos. |
 
-Still open: Sentry DSN (O1.7), hosted backup, hosted restore and rollback rehearsal (O2.2-O2.4), uptime monitor (O2.5), production sign-off and `v1.0.0` tag (O2.6, O2.7, S2.G7). If CI stops starting again, push a throwaway workflow file on a probe branch, then delete the branch.
+### Still open
+| Item | Needs |
+|---|---|
+| O1.7 Sentry | Owner supplies `SENTRY_DSN` |
+| O2.2, O2.3, B9.3 automated hosted backup and hosted restore | Backup method that works on the Railway plan, or a temporary DB access approval |
+| B10.2 real data and real users | Owner |
+| First production sign-in and authenticated walkthrough | Owner signs in as `SA-0001` with the one-time password from the deploy logs and sets a new one |
+| Cross-site cookies | Browsers that block third-party cookies still fail; use one parent domain or serve `/api` from the frontend host |

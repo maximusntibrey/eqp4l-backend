@@ -98,8 +98,8 @@ Browser (React)  --HTTPS, session cookie, JSON-->  Django REST API  -->  Postgre
 - **Quantities** are positive whole numbers unless the unit of measure allows decimals.
 - **Migrations** are committed with the code and never edited after they are applied anywhere. Add a new migration instead.
 - **Keys.** Internal primary key type and public reference formats for SKU, GRN, transfer, sale, receipt and request numbers are open. Only SA-0001 and USR-0001 are given as examples.
-- **Stock buckets** (on hand, reserved, in transit, quarantined or damaged, available) are named in BE s3.8, and posted to the ledger as in SPEC s11.2 (decided 2026-11-18): dispatch moves quantity from available to reserved at the sender and marks it in transit; receipt clears the reservation and credits the destination's on hand with the approved quantity only. Available equals on hand minus reserved. How the buckets are stored is set in the ERD.
-- **Ready for per-unit tracking later (GAP-C02, decided 2026-11-18).** Stock stays at SKU-and-location level. Every stock ledger row carries a stable source reference and line ID, so a unit reference can be added later as a new optional link. No unit, barcode or serial tables are built now.
+- **Stock buckets** (on hand, reserved, in transit, quarantined or damaged, available) are named in BE s3.8, and posted to the ledger as in SPEC s11.2 (decided): dispatch moves quantity from available to reserved at the sender and marks it in transit; receipt clears the reservation and credits the destination's on hand with the approved quantity only. Available equals on hand minus reserved. How the buckets are stored is set in the ERD.
+- **Ready for per-unit tracking later (GAP-C02, decided).** Stock stays at SKU-and-location level. Every stock ledger row carries a stable source reference and line ID, so a unit reference can be added later as a new optional link. No unit, barcode or serial tables are built now.
 - **Entity relationships.** No ERD exists. The ERD is a Sprint 1 Day 1 deliverable and must be approved before migrations are written.
 - **Retention and deletion** of personal data, logs and backups: open.
 
@@ -181,9 +181,9 @@ Only rules approved in the current documents are listed as approved. Anything ma
 | Object | Statuses | Source |
 |---|---|---|
 | Item | Draft, Active, Discontinued | BE s3.2 |
-| Transfer | Draft, Dispatched, In transit, Partially received, Completed, Rejected, Under investigation | SPEC s5.4, decided 2026-11-18 (no separate "pending") |
+| Transfer | Draft, Dispatched, In transit, Partially received, Completed, Rejected, Under investigation | SPEC s5.4, decided (no separate "pending") |
 | Branch access request | Pending, Approved, Rejected, Expired, Revoked | SPEC s3.3 |
-| Sale | Completed, Cancelled, Refunded, Exchanged | Decided 2026-11-18 (replaces SPEC s7.1; "Voided" is not used) |
+| Sale | Completed, Cancelled, Refunded, Exchanged | Decided (replaces SPEC s7.1; "Voided" is not used) |
 | Account | Active, Pending activation, Suspended, Deactivated | Proposed from SPEC s2.1, s2.5 |
 
 **Rules for every workflow:**
@@ -260,7 +260,7 @@ These are mandatory.
 12. **Test affected workflows** after every change, and run the repo's single check command.
 13. **Never claim a feature is complete without evidence:** passing tests, the check command output, and for screens a look at the running page.
 14. **Respect the two repositories.** Backend work only in `eqp4l-backend`. Frontend work only in `p4linventory-frontend`. Never edit one while in the other.
-15. **Follow the git rules** in TASKS.md section 1: identity, branches, one commit per step, pull requests, no force pushes. Fixes, patches and updates follow section 1.7. _(Applied in the end-of-day cycle (owner, 2026-11-23))_
+15. **Follow the git rules** in TASKS.md section 1: identity, branches, one commit per step, pull requests, no force pushes. Fixes, patches and updates follow section 1.7. _(Applied in the end-of-day cycle (owner))_
 16. **Do not install or add dependencies** that are not vetted. Record every install in Appendix A.
 17. **Never expose or log secrets, passwords or personal data.**
 18. **Stop and ask** if any of these happens: a rule seems wrong, two documents disagree, a task needs data or access you do not have, a step would delete data, or a change would affect production.
@@ -279,39 +279,39 @@ These are mandatory.
 
 ## Appendix A: Install register
 
-One register per repository. Record every tool, package and skill installed. Nothing is installed without vetting (TASKS.md 2.1). T.0 passed 2026-11-23 (pip in python:3.12-slim and npm on host both installed a test package).
+One register per repository. Record every tool, package and skill installed. Nothing is installed without vetting (TASKS.md 2.1). T.0 passed (pip in python:3.12-slim and npm on host both installed a test package).
 
 | Date | Repo | Name | Version | Purpose | Vetted by | Notes |
 |---|---|---|---|---|---|---|
-| 2026-11-23 | backend | pip-tools | 7.7.0 | pinned requirements (compile with hashes) (T.5) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | Django | 5.2.19 | web framework, 5.2 LTS, custom user model later (T.6) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | djangorestframework | 3.18.3 | REST API (T.6) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | drf-spectacular | 0.30.0 | generates the OpenAPI contract (T.7) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | psycopg-binary | 3.3.9 | PostgreSQL driver (psycopg 3) (T.8) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | django-environ | 0.14.0 | env-driven settings (T.8) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | argon2-cffi | 25.1.0 | Argon2 password hashing (T.9) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | django-cors-headers | 4.9.0 | CORS for the frontend origin (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | django-filter | 26.2 | list filtering (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | Pillow | 13.0.0 | image validation and optimisation (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | pytest | 9.2.0 | test runner (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | pytest-django | 4.14.0 | Django test integration (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | pytest-cov | 7.1.0 | coverage gate (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | factory-boy | 3.3.3 | test data factories (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | ruff | 0.17.6 | lint and format (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | mypy | 2.4.1 | type check (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | django-stubs | 6.1.2 | Django typing plugin for mypy (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | djangorestframework-stubs | 3.18.2 | DRF typing plugin for mypy (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | bandit | 1.9.4 | security lint (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | pip-audit | 2.10.1 | dependency vulnerability scan (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | gunicorn | 27.0.1 | production WSGI server (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | whitenoise | 6.12.0 | static files (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | sentry-sdk | 3.0.0 | error monitoring (starts only with SENTRY_DSN) (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
-| 2026-11-23 | backend | python:3.12-slim (Docker) | 3.12.16 | runtime and CI interpreter (T.5) | backend-dev | official Docker image |
-| 2026-11-23 | backend | postgres:16 (Docker) | 16 | local database via Compose | backend-dev | official Docker image |
-| 2026-11-23 | backend | pg_dump / pg_restore (from postgres:16 image) | 16 | backup and scripted restore test, scripts/backup.sh and scripts/restore-test.sh (T.14) | backend-dev | official image; restore test run 2026-11-23 on the local DB, passed |
-| 2026-11-23 | backend | pre-commit config (ruff v0.17.6 hook + local secret-check script) | n/a | T.3 hooks | backend-dev | config only; the `pre-commit` tool itself is not installed yet |
-| 2026-11-24 | backend | (no new installs) | n/a | Day 3 B3 built with the existing pinned stack only | backend-dev | nothing added to requirements*.txt |
-| 2026-11-24 | backend | (no new installs) | n/a | Day 6 B6 (sales, find, CSV import, cancel) built with the existing pinned stack only (stdlib `csv`) | backend-dev | nothing added to requirements*.txt |
+| - | backend | pip-tools | 7.7.0 | pinned requirements (compile with hashes) (T.5) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | Django | 5.2.19 | web framework, 5.2 LTS, custom user model later (T.6) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | djangorestframework | 3.18.3 | REST API (T.6) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | drf-spectacular | 0.30.0 | generates the OpenAPI contract (T.7) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | psycopg-binary | 3.3.9 | PostgreSQL driver (psycopg 3) (T.8) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | django-environ | 0.14.0 | env-driven settings (T.8) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | argon2-cffi | 25.1.0 | Argon2 password hashing (T.9) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | django-cors-headers | 4.9.0 | CORS for the frontend origin (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | django-filter | 26.2 | list filtering (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | Pillow | 13.0.0 | image validation and optimisation (T.10) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | pytest | 9.2.0 | test runner (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | pytest-django | 4.14.0 | Django test integration (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | pytest-cov | 7.1.0 | coverage gate (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | factory-boy | 3.3.3 | test data factories (T.11) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | ruff | 0.17.6 | lint and format (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | mypy | 2.4.1 | type check (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | django-stubs | 6.1.2 | Django typing plugin for mypy (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | djangorestframework-stubs | 3.18.2 | DRF typing plugin for mypy (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | bandit | 1.9.4 | security lint (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | pip-audit | 2.10.1 | dependency vulnerability scan (T.12) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | gunicorn | 27.0.1 | production WSGI server (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | whitenoise | 6.12.0 | static files (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | sentry-sdk | 3.0.0 | error monitoring (starts only with SENTRY_DSN) (T.13) | backend-dev | PyPI; pinned with hashes in requirements*.txt; maintained, permissive licence; pip-audit clean on install date |
+| - | backend | python:3.12-slim (Docker) | 3.12.16 | runtime and CI interpreter (T.5) | backend-dev | official Docker image |
+| - | backend | postgres:16 (Docker) | 16 | local database via Compose | backend-dev | official Docker image |
+| - | backend | pg_dump / pg_restore (from postgres:16 image) | 16 | backup and scripted restore test, scripts/backup.sh and scripts/restore-test.sh (T.14) | backend-dev | official image; restore test run on the local DB, passed |
+| - | backend | pre-commit config (ruff v0.17.6 hook + local secret-check script) | n/a | T.3 hooks | backend-dev | config only; the `pre-commit` tool itself is not installed yet |
+| - | backend | (no new installs) | n/a | Day 3 B3 built with the existing pinned stack only | backend-dev | nothing added to requirements*.txt |
+| - | backend | (no new installs) | n/a | Day 6 B6 (sales, find, CSV import, cancel) built with the existing pinned stack only (stdlib `csv`) | backend-dev | nothing added to requirements*.txt |
 
 ## Appendix B: Glossary
 
@@ -338,24 +338,24 @@ Proposed wording. The documents use several words for the same thing. Use these 
 
 ## Appendix C: Source documents and precedence
 
-Order of authority (decided by the owner on 2026-11-18): OVR, FE, BE and DEVOPS win. DET and SPEC are background and are kept in sync with them. This file and TASKS follow OVR, FE, BE and DEVOPS.
+Order of authority (decided by the owner): OVR, FE, BE and DEVOPS win. DET and SPEC are background and are kept in sync with them. This file and TASKS follow OVR, FE, BE and DEVOPS.
 
 | Abbrev. | File | Date | Role in this file |
 |---|---|---|---|
 | OVR | [1-Overview-and-Sprints.md](1-Overview-and-Sprints.md) | Undated | Current (decisions, contract, sprints) |
 | FE | [2-Frontend-Requirements.md](2-Frontend-Requirements.md) | Undated | Current |
 | BE | [3-Backend-Requirements.md](3-Backend-Requirements.md) | Undated | Current |
-| DEVOPS | [4-DevOps-Requirements.md](4-DevOps-Requirements.md) | 2026-11-17 | Proposed DevOps plan, not owner-approved |
-| DET | [5-Detailed-Requirements.md](5-Detailed-Requirements.md) | 11 November 2026 | Background, synced 2026-11-18 (barcodes deferred, no dates, sprint plan) |
-| SPEC | [6-Functional-Workflow-Specification.md](6-Functional-Workflow-Specification.md) | Undated, synced 2026-11-18 | Background, in sync. Source of workflows, stock movement rules and Django app layout |
-| TASKS | [TASKS.md](TASKS.md) | 2026-11-17, synced 2026-11-18 | Task list for Sprints 1 to 9 and enforced rules, derived from the current documents |
-| GAPS | [PROJECT_GAPS_AND_ACTIONS.md](PROJECT_GAPS_AND_ACTIONS.md) | 2026-11-18 | Open decisions and gaps |
+| DEVOPS | [4-DevOps-Requirements.md](4-DevOps-Requirements.md) | | Proposed DevOps plan, not owner-approved |
+| DET | [5-Detailed-Requirements.md](5-Detailed-Requirements.md) | 11 November 2026 | Background, synced (barcodes deferred, no dates, sprint plan) |
+| SPEC | [6-Functional-Workflow-Specification.md](6-Functional-Workflow-Specification.md) | Undated, synced | Background, in sync. Source of workflows, stock movement rules and Django app layout |
+| TASKS | [TASKS.md](TASKS.md) |, synced | Task list for Sprints 1 to 9 and enforced rules, derived from the current documents |
+| GAPS | [PROJECT_GAPS_AND_ACTIONS.md](PROJECT_GAPS_AND_ACTIONS.md) | | Open decisions and gaps |
 
-All documents were converted from PDF to Markdown on 2026-11-18. The original PDFs are kept in `_source-pdfs/`.
+All documents were converted from PDF to Markdown. The original PDFs are kept in `_source-pdfs/`.
 
 ## Appendix D: Critical decisions
 
-All critical gaps were decided by the owner on 2026-11-18 and development is authorised (TASKS rule 0.7). The answers, the remaining high and medium gaps, and the decision log are in [PROJECT_GAPS_AND_ACTIONS.md](PROJECT_GAPS_AND_ACTIONS.md).
+All critical gaps were decided by the owner and development is authorised (TASKS rule 0.7). The answers, the remaining high and medium gaps, and the decision log are in [PROJECT_GAPS_AND_ACTIONS.md](PROJECT_GAPS_AND_ACTIONS.md).
 
 | Gap | Decision |
 |---|---|
@@ -372,23 +372,23 @@ All critical gaps were decided by the owner on 2026-11-18 and development is aut
 
 | Date | Decision | By |
 |---|---|---|
-| 2026-11-23 | No git workflow DURING a day: no branches, PRs or worktrees while building. Git runs only in /sync, the END-OF-DAY CYCLE, /emergency-push, or when the owner says "push". TASKS 0.1 steps 2-3, the git parts of 0.5, section 1, the G and S*.G steps, and SKILLS rule 15 apply there. They are marked "Applied in the end-of-day cycle (owner, 2026-11-23)" and are not deleted. Everything else stays in force: scope, quality, testing, security, honesty, gates, stock/ledger/audit/permission rules, accessibility, and "done only with evidence". | Owner |
-| 2026-11-23 | B1.1 permission table (eqp4l-backend/docs/design/PERMISSION_TABLE.md) approved. | Owner |
-| 2026-11-23 | B1.2 ERD (eqp4l-backend/docs/design/ERD.md) approved, including new tables idempotency_keys and dispatch_resolutions. | Owner |
-| 2026-11-23 | OQ-4 to OQ-19: proposed answers approved as written. | Owner |
-| 2026-11-23 | Frontend supporting packages approved: @vitejs/plugin-react, @tailwindcss/vite, jsdom, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals, @types/react, @types/react-dom, @types/node. eslint 9.39.5 (deprecated) accepted until eslint-plugin-jsx-a11y supports ESLint 10. | Owner |
-| 2026-11-23 | GAP-M10 / OQ-3: keep local zip snapshots for the whole project; database backup retention decided when hosting (O1.1) is chosen. | Owner |
-| 2026-11-23 | FIX-4 approved: Idempotency-Key on every state-changing request (not only the 3 stock POSTs). Contract becomes v0.1.1. | Owner |
-| 2026-11-23 | FIX-5 approved: snake_case status codes in the database and API, mapped 1:1 to the SKILLS status words shown on screens; account status 'Pending activation' (pending_activation) added. Contract v0.1.1. | Owner |
-| 2026-11-23 | OQ-20 approved: Super Admin and Warehouse Admin can add, rename and deactivate brands (seeded list; endpoints in v0.1.1); image limit 5 MB, JPEG/PNG/WebP; Discontinued is final (no re-activation); dashboard shell fields as in the contract. | Owner |
-| 2026-11-23 | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
-| 2026-11-23 | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
-| 2026-11-23 | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
-| 2026-11-24 | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
-| 2026-11-24 | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
-| 2026-11-24 | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
-| 2026-11-24 | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
-| 2026-11-24 | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
-| 2026-11-24 | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
-| 2026-11-24 | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
-| 2026-11-24 | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
+| - | No git workflow DURING a day: no branches, PRs or worktrees while building. Git runs only in /sync, the END-OF-DAY CYCLE, /emergency-push, or when the owner says "push". TASKS 0.1 steps 2-3, the git parts of 0.5, section 1, the G and S*.G steps, and SKILLS rule 15 apply there. They are marked "Applied in the end-of-day cycle (owner)" and are not deleted. Everything else stays in force: scope, quality, testing, security, honesty, gates, stock/ledger/audit/permission rules, accessibility, and "done only with evidence". | Owner |
+| - | B1.1 permission table (eqp4l-backend/docs/design/PERMISSION_TABLE.md) approved. | Owner |
+| - | B1.2 ERD (eqp4l-backend/docs/design/ERD.md) approved, including new tables idempotency_keys and dispatch_resolutions. | Owner |
+| - | OQ-4 to OQ-19: proposed answers approved as written. | Owner |
+| - | Frontend supporting packages approved: @vitejs/plugin-react, @tailwindcss/vite, jsdom, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals, @types/react, @types/react-dom, @types/node. eslint 9.39.5 (deprecated) accepted until eslint-plugin-jsx-a11y supports ESLint 10. | Owner |
+| - | GAP-M10 / OQ-3: keep local zip snapshots for the whole project; database backup retention decided when hosting (O1.1) is chosen. | Owner |
+| - | FIX-4 approved: Idempotency-Key on every state-changing request (not only the 3 stock POSTs). Contract becomes v0.1.1. | Owner |
+| - | FIX-5 approved: snake_case status codes in the database and API, mapped 1:1 to the SKILLS status words shown on screens; account status 'Pending activation' (pending_activation) added. Contract v0.1.1. | Owner |
+| - | OQ-20 approved: Super Admin and Warehouse Admin can add, rename and deactivate brands (seeded list; endpoints in v0.1.1); image limit 5 MB, JPEG/PNG/WebP; Discontinued is final (no re-activation); dashboard shell fields as in the contract. | Owner |
+| - | OQ-21 approved: an item can be activated without a selling price, but cannot be sold until a price exists; only Super Admin or a 'Manage prices' holder may send selling_price. | Owner |
+| - | OQ-22 approved: an account created (or reset) by a Super Admin starts as pending_activation and becomes active after the user's first password change; pending_activation is set only by the system, never via the status endpoint. | Owner |
+| - | Brands: a deactivated brand can be reactivated (SA or WA) and cannot be chosen for new items (400). | Owner |
+| - | OQ-23 approved: add permission and menu codes for Sell, Activity, Find and Receive to the contract with B3.4 (dashboard shell), so Super Admin Home opens them from server data. | Owner |
+| - | Contract v0.1.2 approved: a generic `conflict` error code (409) used for duplicate stock posts instead of idempotency_conflict, and the 429 response documented on /auth/password/. Publish at the start of Day 3; the frontend re-syncs. | Owner |
+| - | Super Admin and branches: a Super Admin is never asked to pick a branch at login. Super Admin works across ALL branches: lists and dashboard default to all branches, with an optional branch filter to view one branch, and every action available to them can be performed on any branch (actions on a record use that record's location, OQ-12). /me exposes `must_pick_branch` (true only when the user's role requires a working branch and none is chosen; always false for Super Admin). | Owner |
+| - | Contract v0.1.2 also approved: /me `home_links` (Sell, Activity, Find, Receive Home tiles, separate from the max-5 menu) and /me `can_assign_multiple_roles` (true only for Super Admin). | Owner |
+| - | OQ-26 decided: (1) Deactivated is final (suspend for temporary cases). (2) Last-Super-Admin guard: the system must always keep at least one active Super Admin; removing the SA role from, suspending or deactivating the last active SA is refused. (3) A Branch Admin's user list includes users whose permanent branch is theirs AND Front Staff currently working at their branch. (4) Password reset is refused for a deactivated user. | Owner |
+| - | OQ-25 (backend) decided: Warehouse Admin and Branch Admin open the Activity log from a Home tile (home_links), showing only their own location's activity (OQ-5). | Owner |
+| - | FIX-34 kept: Sentry uses sentry-sdk 3.0.0 `data_collection` (user_info false, stack_frame_variables false, cookies off, http_bodies []) because include_local_variables/send_default_pii do not exist in 3.0.0. | Owner |
+| - | Approved for the next contract version: /me `all_branches` (true when the user works across all branches, e.g. Super Admin), so the frontend stops inferring it. | Owner |
