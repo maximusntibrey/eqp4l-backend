@@ -36,6 +36,7 @@ class PasswordChangeRequestSerializer(serializers.Serializer[object]):
 class BranchSerializer(serializers.Serializer[object]):
     id = serializers.IntegerField()
     kind = serializers.ChoiceField(choices=LocationKind.choices)
+    branch_type = serializers.ChoiceField(choices=LocationKind.choices, source="kind")  # same value as `kind`
     code = serializers.CharField()
     name = serializers.CharField()
     is_active = serializers.BooleanField()

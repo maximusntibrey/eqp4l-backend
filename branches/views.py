@@ -29,10 +29,12 @@ CREATE_ERRORS = {400: ERROR, 401: ERROR, 403: ERROR, 409: ERROR}
 class BranchWriteSerializer(serializers.Serializer[object]):
     code = serializers.CharField(max_length=20, required=False)
     name = serializers.CharField(max_length=100, required=False)
+    branch_type = serializers.ChoiceField(choices=LocationKind.choices, required=False)
 
 
 class BranchQuerySerializer(serializers.Serializer[object]):
     kind = serializers.ChoiceField(choices=LocationKind.choices, required=False)
+    branch_type = serializers.ChoiceField(choices=LocationKind.choices, required=False)  # alias of `kind`
     is_active = serializers.BooleanField(required=False, allow_null=True, default=None)  # None: no filter
     branch = serializers.IntegerField(required=False, min_value=1)
 
@@ -65,6 +67,8 @@ class BranchListCreateView(generics.GenericAPIView[Location]):
             qs = qs.filter(pk=only)
         if "kind" in query.validated_data:
             qs = qs.filter(kind=query.validated_data["kind"])
+        if "branch_type" in query.validated_data:
+            qs = qs.filter(kind=query.validated_data["branch_type"])
         page = self.paginate_queryset(qs.order_by("id"))
         return self.get_paginated_response(BranchSerializer(page, many=True).data)
 

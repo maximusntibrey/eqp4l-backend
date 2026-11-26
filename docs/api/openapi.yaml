@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Payless4Laptops Inventory API
-  version: 0.5.2
+  version: 0.6.0
   description: |
     Contract-first API for Sprint 1 (B1.3). Published before the code; from B2 onward the
     drf-spectacular generated schema must match this file. Changes need owner approval.
@@ -244,6 +244,7 @@ paths:
         - {$ref: '#/components/parameters/Page'}
         - {$ref: '#/components/parameters/PageSize'}
         - {name: kind, in: query, schema: {type: string, enum: [branch, warehouse]}}
+        - {name: branch_type, in: query, description: 'Same filter as `kind`; when both are given, both apply.', schema: {type: string, enum: [branch, warehouse]}}
         - {name: is_active, in: query, schema: {type: boolean}}
         - {$ref: '#/components/parameters/BranchFilter'}
       responses:
@@ -264,7 +265,9 @@ paths:
       tags: [branches]
       operationId: branchesCreate
       summary: Create a branch
-      description: Always creates `kind` = branch. There is exactly one warehouse, created by seed.
+      description: |
+        `branch_type` is optional and defaults to `branch`. There is exactly one warehouse, created by seed: sending
+        `branch_type` = `warehouse` while one exists is 400 on `branch_type` ("A warehouse already exists.").
       x-permission: SA (table row 11)
       parameters:
         - {$ref: '#/components/parameters/IdempotencyKey'}
@@ -1691,10 +1694,11 @@ components:
       enum: [in_transit, completed, partially_received, rejected]
     Branch:
       type: object
-      required: [id, kind, code, name, is_active]
+      required: [id, kind, branch_type, code, name, is_active]
       properties:
         id: {type: integer}
-        kind: {type: string, enum: [branch, warehouse]}
+        kind: {type: string, enum: [branch, warehouse], description: Kept for compatibility; same value as `branch_type`.}
+        branch_type: {type: string, enum: [branch, warehouse], description: "branch = Normal Branch, warehouse = Warehouse."}
         code: {type: string}
         name: {type: string}
         is_active: {type: boolean}
@@ -1702,10 +1706,14 @@ components:
         updated_at: {type: string, format: date-time}
     BranchWrite:
       type: object
-      description: Both fields required on create. Code and name are unique.
+      description: |
+        Code and name required on create and unique. `branch_type` optional on create (default `branch`).
+        On edit a type change is refused with 400 on `branch_type`: a second warehouse cannot exist and the
+        warehouse cannot become a branch; sending the current type is accepted.
       properties:
         code: {type: string, maxLength: 20}
         name: {type: string, maxLength: 100}
+        branch_type: {type: string, enum: [branch, warehouse]}
     User:
       type: object
       required: [id, login_id, full_name, status, roles, permanent_location_id, must_change_password, permissions]

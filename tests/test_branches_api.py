@@ -14,7 +14,7 @@ from tests.api import call, client_as
 
 pytestmark = pytest.mark.django_db
 URL = "/api/v1/branches/"
-LOCATION_KEYS = {"id", "kind", "code", "name", "is_active", "created_at", "updated_at"}
+LOCATION_KEYS = {"id", "kind", "branch_type", "code", "name", "is_active", "created_at", "updated_at"}
 
 
 def test_everyone_lists_active_locations_in_the_standard_envelope(
@@ -58,7 +58,7 @@ def test_super_admin_creates_a_branch_and_it_is_audited(users: dict[str, Any], l
     assert created.created_by_id == users["sa"].pk
     event = AuditEvent.objects.get(action="branch_created")
     assert (event.actor_id, event.actor_role, event.target_ref) == (users["sa"].pk, "super_admin", "C")
-    assert event.after_values == {"code": "C", "name": "Branch C", "is_active": True}
+    assert event.after_values == {"code": "C", "name": "Branch C", "branch_type": "branch", "is_active": True}
     assert call(client_as(users["ba"]), "GET", f"{URL}{created.pk}/").status_code == 200  # visible to all
 
 
@@ -94,6 +94,74 @@ def test_edit_changes_name_and_code_and_keeps_the_kind(users: dict[str, Any], lo
     assert (
         call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"code": "A"}).status_code == 200
     )  # own value is no clash
+
+
+def test_branch_type_is_read_and_defaults_to_branch(users: dict[str, Any], locations: Any) -> None:
+    sa = client_as(users["sa"])
+    rows = {r["code"]: r for r in call(sa, "GET", URL).json()["results"]}
+    assert rows["WH"]["branch_type"] == rows["WH"]["kind"] == "warehouse"  # legacy rows read their kind
+    assert rows["A"]["branch_type"] == rows["A"]["kind"] == "branch"
+    body = call(sa, "POST", URL, {"code": "C", "name": "Branch C", "branch_type": "branch"}).json()
+    assert body["branch_type"] == "branch" and body["kind"] == "branch"
+    assert call(sa, "GET", f"{URL}{body['id']}/").json()["branch_type"] == "branch"
+
+
+def test_branch_type_filter_and_bad_value(users: dict[str, Any], locations: Any) -> None:
+    sa = client_as(users["sa"])
+    by_type = call(sa, "GET", URL, {"branch_type": "warehouse"}).json()["results"]
+    assert [r["code"] for r in by_type] == ["WH"]
+    assert [r["code"] for r in call(sa, "GET", URL, {"branch_type": "branch"}).json()["results"]] == [
+        "A",
+        "B",
+    ]
+    assert call(sa, "GET", URL, {"branch_type": "warehouse", "kind": "branch"}).json()["count"] == 0
+    response = call(sa, "GET", URL, {"branch_type": "moon"})
+    assert response.status_code == 400 and response.json()["errors"][0]["field"] == "branch_type"
+    for key in ("wa", "ba", "fs"):  # everyone may read and filter
+        assert call(client_as(users[key]), "GET", URL, {"branch_type": "warehouse"}).json()["count"] == 1
+
+
+def test_second_warehouse_is_a_400_on_branch_type_not_a_500(users: dict[str, Any], locations: Any) -> None:
+    sa = client_as(users["sa"])
+    response = call(sa, "POST", URL, {"code": "W2", "name": "Second", "branch_type": "warehouse"})
+    body = response.json()
+    assert response.status_code == 400 and body["code"] == "validation_error"
+    assert (
+        body["errors"][0]["field"] == "branch_type"
+        and "warehouse already exists" in body["errors"][0]["message"]
+    )
+    assert Location.objects.filter(kind="warehouse").count() == 1
+    assert call(sa, "POST", URL, {"code": "W2", "name": "Second", "branch_type": "moon"}).status_code == 400
+    assert not AuditEvent.objects.filter(action="branch_created")
+
+
+def test_a_warehouse_can_be_created_only_when_none_exists(users: dict[str, Any], locations: Any) -> None:
+    Location.objects.filter(kind="warehouse").update(kind="branch")  # defensive: no warehouse row exists
+    response = call(
+        client_as(users["sa"]), "POST", URL, {"code": "W2", "name": "Second", "branch_type": "warehouse"}
+    )
+    assert response.status_code == 201 and response.json()["branch_type"] == "warehouse"
+
+
+def test_changing_the_type_of_an_existing_row_is_refused(users: dict[str, Any], locations: Any) -> None:
+    sa = client_as(users["sa"])
+    to_wh = call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "warehouse"})
+    assert to_wh.status_code == 400 and to_wh.json()["errors"][0]["field"] == "branch_type"
+    to_branch = call(sa, "PATCH", f"{URL}{locations['wh'].pk}/", {"branch_type": "branch"})
+    assert to_branch.status_code == 400 and to_branch.json()["errors"][0]["field"] == "branch_type"
+    same = call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "branch", "name": "Renamed"})
+    assert same.status_code == 200 and same.json()["branch_type"] == "branch"
+    assert Location.objects.get(pk=locations["wh"].pk).kind == "warehouse"
+
+
+def test_branch_type_writes_are_super_admin_only(users: dict[str, Any], locations: Any) -> None:
+    payload = {"code": "C", "name": "Branch C", "branch_type": "branch"}
+    for key in ("wa", "ba", "fs"):
+        client = client_as(users[key])
+        assert call(client, "POST", URL, payload).status_code == 403
+        assert (
+            call(client, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "branch"}).status_code == 403
+        )
 
 
 def test_edit_rejects_duplicates_empty_bodies_and_unknown_branches(
