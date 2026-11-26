@@ -1,7 +1,9 @@
 """Branch management (B3.2, PERMISSION_TABLE rows 11-12). Super Admin only; history is kept.
 
-Rules: new locations are always branches (the one warehouse is seeded); code and name are unique; the
-warehouse cannot be deactivated; deactivated branches keep every record but nothing can act in them.
+Rules: `branch_type` (stored as `kind`) defaults to branch on create; only one warehouse may exist (seeded),
+so a second one, or changing the type of an existing row, is refused with 400 on `branch_type`; code and name
+are unique; the warehouse cannot be deactivated; deactivated branches keep every record but nothing can
+act in them.
 Audit events written: branch_created, branch_updated, branch_deactivated, branch_activated.
 """
 
@@ -38,7 +40,12 @@ def branch_filter(actor: User, branch_id: int | None) -> int | None:
 
 
 def _snapshot(location: Location) -> dict[str, Any]:
-    return {"code": location.code, "name": location.name, "is_active": location.is_active}
+    return {
+        "code": location.code,
+        "name": location.name,
+        "branch_type": location.kind,
+        "is_active": location.is_active,
+    }
 
 
 def _audit(request: HttpRequest, actor: User, action: str, location: Location, **values: Any) -> None:
@@ -72,33 +79,51 @@ def _clean(data: dict[str, Any], location: Location | None = None) -> dict[str, 
     return cleaned
 
 
+def _one_warehouse() -> ApiError:
+    return ApiError(400, "validation_error", "A warehouse already exists.", "branch_type")
+
+
 def create_branch(request: HttpRequest, actor: User, data: dict[str, Any]) -> Location:
     """Create a branch (row 11). Writes audit `branch_created`."""
     require_action(actor, "branches.manage")
     for field in ("code", "name"):
         if field not in data:
             raise ApiError(400, "validation_error", f"Enter a {field}.", field)
+    kind = data.get("branch_type", LocationKind.BRANCH)
+    if kind == LocationKind.WAREHOUSE and Location.objects.filter(kind=kind).exists():
+        raise _one_warehouse()
     try:
         with transaction.atomic():
-            location = Location.objects.create(
-                kind=LocationKind.BRANCH, created_by=actor, updated_by=actor, **_clean(data)
-            )
+            location = Location.objects.create(kind=kind, created_by=actor, updated_by=actor, **_clean(data))
             _audit(request, actor, "branch_created", location, after=_snapshot(location))
-    except IntegrityError:  # a concurrent create took the code or name first
+    except IntegrityError:  # a concurrent create took the code, name or the warehouse slot first
+        if kind == LocationKind.WAREHOUSE and Location.objects.filter(kind=kind).exists():
+            raise _one_warehouse() from None
         raise ApiError(409, "conflict", "That code or name is already in use.") from None
     return location
 
 
 def update_branch(request: HttpRequest, actor: User, location_id: int, data: dict[str, Any]) -> Location:
-    """Edit code and/or name (row 11). Writes audit `branch_updated`."""
+    """Edit code, name and/or type (row 11). Writes audit `branch_updated`.
+
+    Type changes are refused (open question: multiple warehouses): the one warehouse is the receiving point
+    and must stay, and a second one cannot exist. Sending the current type is accepted and changes nothing.
+    """
     require_action(actor, "branches.manage")
-    if not data.keys() & {"code", "name"}:
-        raise ApiError(400, "validation_error", "Send a code or a name to change.")
+    if not data.keys() & {"code", "name", "branch_type"}:
+        raise ApiError(400, "validation_error", "Send a code, a name or a branch type to change.")
     try:
         with transaction.atomic():
             location = Location.objects.select_for_update().filter(pk=location_id).first()
             if location is None:
                 raise ApiError(404, "not_found", "No such branch.")
+            new_kind = data.get("branch_type", location.kind)
+            if new_kind != location.kind:
+                if new_kind == LocationKind.WAREHOUSE:
+                    raise _one_warehouse()
+                raise ApiError(
+                    400, "validation_error", "The warehouse cannot become a branch.", "branch_type"
+                )
             before = _snapshot(location)
             for field, value in _clean(data, location).items():
                 setattr(location, field, value)

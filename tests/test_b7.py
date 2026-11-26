@@ -410,7 +410,7 @@ def test_generated_schema_matches_the_contract_for_the_day7_operations(tmp_path:
         }
 
     gen_ops, ref_ops = ops(generated), ops(contract)
-    assert set(gen_ops) == set(ref_ops) and len(ref_ops) == 4
+    assert set(gen_ops) == set(ref_ops) and len(ref_ops) == 5
     for key, ref in ref_ops.items():
         gen = gen_ops[key]
         assert gen["operationId"] == ref["operationId"], key

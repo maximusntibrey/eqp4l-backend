@@ -681,6 +681,14 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 - [ ] O9.4 Owner go-ahead, verified backup, deploy, smoke tests, deployment log entry
 - [ ] O9.5 Infrastructure notes for POS integration (a later update, not scheduled)
 
+## BRANCH TYPE AND AUDIT LOG API (branch `feat/branch-type-audit-api`, contract 0.6.0)
+
+- [x] BT.1 `branch_type` on the branches API: reuses `Location.kind` (no new column, no migration, 0 rows changed; dev DB and a scratch copy both hold warehouse 1, branch 3). Read on every branch object, optional on create (default `branch`), edit accepted, `?branch_type=` filter next to `?kind=`. A second warehouse and any type change of an existing row are 400 on `branch_type`. `locations_one_warehouse` and goods-receipt logic untouched. Tests: `tests/test_branches_api.py`.
+- [x] A.1 Activity log filters, search and ordering: `?target_type=`, `?search=` (metadata only), `?ordering=` (`timestamp`, `user`, `action`, `-` prefix, default newest first); page size max 100. Tests: `tests/test_activity_log_api.py`.
+- [x] A.2 `GET /activity-log/export/`: CSV, same filters, scope and permissions, 5000-row cap with `X-Export-Truncated`, formula-injection guard (OQ-34 rule applied here). Tests: `tests/test_activity_log_api.py`.
+- [x] A.3 Menu entry: the existing `activity` home link already serves SA, WA and BA and is absent for FS; no new code added (nav is full at 5 items). Test: `test_audit_menu_entry_is_for_admin_roles_only`.
+- [x] BT.A.C Contract 0.6.0 (additive) in `docs/api/openapi.yaml`, `docs/api/README.md` changelog, `config/settings.py`. Frontend sync is a separate step in its own repo.
+
 ## DECISION LOG (working copy)
 
 | Date | Decision | By |
@@ -761,6 +769,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-33 | Sales: (a) customer name and phone (required for warranty items per BE s6) have no column on `sales_sale`, so they need a migration and a rule for which items are warranty-bearing; not built. (b) The frontend needs the payment-method list; built as fixed codes cash, mobile_money, card in the contract enum, with no list endpoint. (c) Sale detail of another branch is 404 for BA and FS (OQ-30 style); a list `branch` filter for another branch is 403. | backend-dev, B6.1-B6.2 | Approved (owner, relayed by the orchestrator): fixed payment codes kept; customer name and phone deferred to Sprint 3 | Owner |
 | OQ-34 | CSV formula injection: a future CSV export (B40.1) must neutralise cells that start with `=`, `+`, `-` or `@` (for example by prefixing a quote), because item names, SKUs and notes come from users and imports. The import itself stores text as given (`inventory/imports.py` `_lookup`). Decide the exact rule before B40.1. | backend-dev, Day 6 review | Open | Owner |
 | OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O2.1 deployment checklist. | backend-dev, Day 6 review | Open (confirm host body limit before deployment) | Owner |
+| OQ-36 | Branch type: may the system hold more than one warehouse? Built: `branch_type` is the existing `kind`; the one-warehouse constraint stays, a second warehouse is 400 on `branch_type`, and no existing row can change type. Also: `branch_type` is optional on create (default `branch`) so current clients keep working; the brief asked for required. Goods receipts, dispatch sources and destinations, stock, dashboard and user assignment keep their current rules; no rule was tied to the type. | backend-dev, BT.1 | Open | Owner |
+| OQ-37 | Activity log: (a) the sidebar entry stays the `activity` home link (SA, WA, BA); an `audit_logs` menu code was not added because every nav is full at 5 items. (b) Search covers action, target type, target ref and user login id, never stored values. (c) Export cap is 5000 rows. Confirm or change. | backend-dev, A.1-A.3 | Open | Owner |
 
 ## FIX LOG
 

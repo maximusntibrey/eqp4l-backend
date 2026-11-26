@@ -43,4 +43,4 @@ Pinned with pip-tools: edit `requirements.in` / `requirements-dev.in`, then `doc
 
 - Sprint 2 backend features and local checks are complete through Day 10. The Railway production release remains blocked until a verified database and image-volume backup is available.
 - Seed: `scripts/seed.sh` creates SA-0001, one dev user per role (passwords from `.env`), 3 branches and sample data, idempotently.
-- OpenAPI: contract `docs/api/openapi.yaml` is version 0.5.2 and has an owned frontend copy at `../p4linventory-frontend/contract/openapi.yaml`.
+- OpenAPI: contract `docs/api/openapi.yaml` is version 0.6.0 and has an owned frontend copy at `../p4linventory-frontend/contract/openapi.yaml`.

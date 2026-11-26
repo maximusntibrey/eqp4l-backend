@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.5.2), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.6.0), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -13,6 +13,9 @@
 
 ## Changelog
 
+### 0.6.0 (minor, additive; branch type and activity-log search, ordering, export)
+- Branch objects gain `branch_type` (`branch` = Normal Branch, `warehouse` = Warehouse), same value as `kind`, which stays. `POST /branches/` accepts optional `branch_type` (default `branch`); `PATCH /branches/{id}/` accepts it too. `GET /branches/` gains `?branch_type=` (alias of `?kind=`). A second warehouse, or any type change of an existing row, is 400 on `branch_type`. No database change: `branch_type` is the existing `kind` column.
+- `GET /activity-log/` gains `?target_type=`, `?search=` (metadata only) and `?ordering=` (`timestamp`, `user`, `action`, `-` prefix; default `-timestamp`); page size max 100. New `GET /activity-log/export/`: CSV, same filters, scope and permissions, at most 5000 rows, header `X-Export-Truncated`. The sidebar entry is the existing `activity` home link (SA, WA, BA; none for FS).
 ### 0.5.2 (2026-11-24, owner-approved; FQ-16; text only)
 - `/auth/me/` `home_links` gains a Shortfalls tile (`/shortfalls`, action `shortfalls.resolve`) for SA, WA and BA, next to the Activity tile (`/activity`, `activity.view`). Exact lists: SA Activity, Shortfalls, Sell, Find, Receive, Sales; WA Activity, Shortfalls; BA Activity, Shortfalls, Sales; FS none. Menus unchanged (never above 5). No schema change.
 
