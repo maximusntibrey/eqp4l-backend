@@ -18,4 +18,6 @@ FROM base AS prod
 COPY --chown=app:app . .
 RUN mkdir -p /app/staticfiles /app/media /data/media && chown -R app:app /app/staticfiles /app/media /data/media
 USER app
+# Static files are built into the image so the admin works without a pre-deploy step.
+RUN DJANGO_SECRET_KEY=build-only DJANGO_DEBUG=False DATABASE_URL=postgres://build:build@localhost/build python manage.py collectstatic --noinput
 CMD ["bash", "scripts/start.sh"]
