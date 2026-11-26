@@ -47,9 +47,12 @@ EXPECTED: dict[str, set[str]] = {
     "activity.view": {SA, WA, BA},  # 41, 45
     "find.use": {SA, WA, BA, FS},  # 13, 22, 46
     "dashboard.view": {SA, WA, BA},  # 40 (FS has no Home tab)
+    "sales.cancel": {SA, BA},  # 39
+    "items.import": {SA, WA},  # 19, 20
+    "shortfalls.resolve": {SA, WA, BA},  # 33-35
 }
 MENUS = {
-    FS: ["Sell", "Find", "Stock", "Receive"],
+    FS: ["Sell", "Find", "Stock", "Receive", "Sales"],
     BA: ["Home", "Sell", "Find", "Stock", "Receive"],
     WA: ["Home", "Items", "Receive stock", "Dispatch", "Find"],
     SA: ["Home", "Items", "Warehouse", "Branches", "Users"],
@@ -57,7 +60,7 @@ MENUS = {
 
 
 def test_expected_matrix_covers_every_action() -> None:
-    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 20
+    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 23
 
 
 def test_effective_actions_match_the_permission_table_for_every_role(users: dict[str, Any]) -> None:
@@ -232,12 +235,17 @@ def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[st
     assert [m["label"] for m in body["menu"]] == MENUS[role] and len(body["menu"]) <= 5
     # OQ-23/OQ-25: Home tiles are kept out of the 5-item menu; WA and BA get an Activity tile
     assert [m["label"] for m in body["home_links"]] == {
-        SA: ["Activity", "Sell", "Find", "Receive"],
-        WA: ["Activity"],
-        BA: ["Activity"],
+        SA: ["Activity", "Shortfalls", "Sell", "Find", "Receive", "Sales"],  # SA, BA menus are full
+        WA: ["Activity", "Shortfalls"],
+        BA: ["Activity", "Shortfalls", "Sales"],
         FS: [],
     }[role]
     assert ("activity.view" in body["permissions"]) == (role != FS)
+    assert ("shortfalls.resolve" in body["permissions"]) == (role != FS)
+    tiles = {m["key"] for m in body["home_links"]}  # FQ-16: a tile only for the holder of its action
+    assert ("activity" in tiles) == ("activity.view" in body["permissions"])
+    assert ("shortfalls" in tiles) == ("shortfalls.resolve" in body["permissions"])
+    assert len(tiles) == len(body["home_links"])  # no duplicates
     assert all(
         set(m) == {"key", "label", "path"} and m["path"].startswith("/")
         for m in body["menu"] + body["home_links"]

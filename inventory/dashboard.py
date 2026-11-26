@@ -6,7 +6,7 @@ Front Staff have no Home tab and are refused. Quantities only: no cost is ever r
 
 from typing import Any, cast
 
-from django.db.models import IntegerField, Sum
+from django.db.models import F, IntegerField, Sum
 from django.db.models.functions import Coalesce
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
@@ -17,10 +17,12 @@ from rest_framework.views import APIView
 from accounts.me import working_branch
 from accounts.models import User
 from accounts.serializers import ROLE_CHOICES, BranchSerializer, ErrorSerializer
+from audit.queries import scoped_events
+from audit.views import ActivityEventSerializer
 from branches.models import Location, LocationKind
 from branches.services import branch_filter
 from config.errors import ApiError
-from inventory.models import Item, ItemStatus
+from inventory.models import Item, ItemStatus, StockBalance
 from roles import constants as c
 from roles.permissions import action_permissions
 from roles.services import active_role
@@ -34,6 +36,19 @@ class StockPerLocationSerializer(serializers.Serializer[object]):
     available = serializers.IntegerField()
 
 
+class LowStockSerializer(serializers.Serializer[object]):
+    location_id = serializers.IntegerField()
+    location_name = serializers.CharField()
+    item_id = serializers.IntegerField()
+    sku = serializers.CharField()
+    item_name = serializers.CharField()
+    available = serializers.IntegerField()
+    reorder_level = serializers.IntegerField()
+
+
+LIST_LIMIT = 10
+
+
 class DashboardSerializer(serializers.Serializer[object]):
     role = serializers.ChoiceField(choices=ROLE_CHOICES)
     location = BranchSerializer(allow_null=True)
@@ -41,6 +56,9 @@ class DashboardSerializer(serializers.Serializer[object]):
     in_transit_dispatches = serializers.IntegerField()
     active_items = serializers.IntegerField()
     stock_per_location = StockPerLocationSerializer(many=True, required=False)
+    low_stock_count = serializers.IntegerField()
+    low_stock = LowStockSerializer(many=True)
+    recent_activity = ActivityEventSerializer(many=True)
 
 
 def dashboard_data(request: Request, user: User, branch_id: int | None = None) -> dict[str, Any]:
@@ -70,6 +88,33 @@ def dashboard_data(request: Request, user: User, branch_id: int | None = None) -
         "in_transit_dispatches": in_transit_count,
         "active_items": Item.objects.filter(status=ItemStatus.ACTIVE).count(),
     }
+    # Low stock (B7.1): reorder level set and available at or below it, in the viewer's scope (row 40).
+    low = StockBalance.objects.filter(
+        reorder_level__isnull=False,
+        reorder_level__gte=F("on_hand") - F("reserved"),
+        item__status=ItemStatus.ACTIVE,
+        location__is_active=True,
+    ).select_related("location", "item")
+    if location is not None:
+        low = low.filter(location=location)
+    elif not is_sa:  # an admin without a location sees nothing, never every location
+        low = low.none()
+    data["low_stock_count"] = low.count()
+    data["low_stock"] = [
+        {
+            "location_id": b.location_id,
+            "location_name": b.location.name,
+            "item_id": b.item_id,
+            "sku": b.item.sku,
+            "item_name": b.item.name,
+            "available": b.on_hand - b.reserved,
+            "reorder_level": b.reorder_level,
+        }
+        for b in low.order_by("location_id", "item_id")[:LIST_LIMIT]
+    ]
+    data["recent_activity"] = list(
+        scoped_events(user, request._request.session, location.pk if location else None)[:LIST_LIMIT]
+    )
     if is_sa or role == c.WAREHOUSE_ADMIN:
         rows = Location.objects.filter(is_active=True)
         if is_sa and location is not None:

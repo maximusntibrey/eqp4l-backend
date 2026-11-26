@@ -5,10 +5,10 @@ on_hand +a. Rejected or short quantity stays reserved at the origin as an open d
 """
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
-from django.db import transaction
-from django.db.models import QuerySet
+from django.db import connection, transaction
+from django.db.models import F, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
@@ -16,12 +16,30 @@ from accounts.models import User
 from audit.services import record_event
 from branches.models import Location, LocationKind
 from config.errors import ApiError
-from roles.permissions import can_act_in, require_action, require_location
+from roles import constants as c
+from roles.permissions import can_act_in, require_action, require_location, working_location_id
 from roles.services import active_role
 from stock_ledger.models import Bucket, MovementType, SourceType
 from stock_ledger.services import StockChange, post_stock_changes
-from transfers.models import Dispatch, DispatchLine, DispatchStatus
+from transfers.models import Dispatch, DispatchLine, DispatchResolution, DispatchStatus, ResolutionAction
 from warehouse.services import active_items, active_warehouse
+
+# action -> (movement type, [(side, bucket, sign)]); side "origin" or "destination". DEC 2026-11-18.
+_EFFECTS: dict[str, tuple[str, list[tuple[str, str, int]]]] = {
+    ResolutionAction.RETURN_TO_SENDER: (MovementType.RESOLUTION_RETURN, [("origin", Bucket.RESERVED, -1)]),
+    ResolutionAction.CONFIRM_LOSS: (
+        MovementType.RESOLUTION_LOSS,
+        [("origin", Bucket.RESERVED, -1), ("origin", Bucket.ON_HAND, -1)],
+    ),
+    ResolutionAction.RECORD_DAMAGE: (
+        MovementType.RESOLUTION_DAMAGE,
+        [
+            ("origin", Bucket.RESERVED, -1),
+            ("origin", Bucket.ON_HAND, -1),
+            ("destination", Bucket.QUARANTINED, 1),
+        ],
+    ),
+}
 
 
 def dispatch_queryset() -> QuerySet[Dispatch]:
@@ -212,3 +230,111 @@ def receive_dispatch(
             operation_id=operation_id,
         )
     return dispatch
+
+
+# A deactivated location keeps its shortfalls resolvable: stranded reserved stock must be cleanable (FIX-49).
+def shortfall_lines(actor: User, session: Any) -> QuerySet[DispatchLine]:
+    """Received lines with a shortfall that the actor may see (rows 33, 34)."""
+    qs = DispatchLine.objects.select_related(
+        "item", "dispatch__origin_location", "dispatch__destination_location", "dispatch__received_by"
+    ).prefetch_related("resolutions__resolved_by")
+    qs = qs.filter(qty_accepted__isnull=False, qty_sent__gt=F("qty_accepted"))
+    role = active_role(actor)
+    if role == c.SUPER_ADMIN:
+        return qs
+    own = working_location_id(actor, session)
+    if own is None or role not in (c.WAREHOUSE_ADMIN, c.BRANCH_ADMIN):
+        return qs.none()
+    side = (
+        "dispatch__origin_location_id" if role == c.WAREHOUSE_ADMIN else "dispatch__destination_location_id"
+    )
+    return qs.filter(**{side: own})
+
+
+def resolve_shortfall(
+    request: HttpRequest, actor: User, line_id: int, data: dict[str, Any], operation_id: uuid.UUID
+) -> DispatchLine:
+    """Resolve part or all of one line's open shortfall through the stock service (B7.3, rows 34, 35)."""
+    require_action(actor, "shortfalls.resolve")
+    note = data["note"].strip()
+    if not note:
+        raise ApiError(400, "validation_error", "Say why, in a note.", "note")
+    action, quantity = data["resolution"], data["quantity"]
+    role = active_role(actor) or ""
+    with transaction.atomic():
+        # Out of scope is 404, like a missing id. The row lock serialises two resolvers of one line.
+        visible = shortfall_lines(actor, request.session).filter(pk=line_id).values_list("pk", flat=True)
+        line = (
+            DispatchLine.objects.select_for_update(of=("self",))
+            .select_related("item", "dispatch__origin_location", "dispatch__destination_location")
+            .filter(pk__in=list(visible))
+            .first()
+        )
+        if line is None:
+            raise ApiError(404, "not_found", "Not found.")
+        accepted = cast(int, line.qty_accepted)  # shortfall_lines only returns received lines
+        resolved = sum(line.resolutions.values_list("quantity", flat=True))
+        remaining = line.qty_sent - accepted - resolved
+        if remaining <= 0:
+            raise ApiError(409, "conflict", "This shortfall is already fully resolved.")
+        if quantity > remaining:
+            raise ApiError(400, "validation_error", f"Only {remaining} left to resolve.", "quantity")
+        dispatch = line.dispatch
+        origin, destination = dispatch.origin_location, dispatch.destination_location
+        with connection.cursor() as cursor:  # append-only row: take the id first, so the reference is final
+            cursor.execute("SELECT nextval(pg_get_serial_sequence('transfers_dispatchresolution', 'id'))")
+            new_id = int(cursor.fetchone()[0])
+        resolution = DispatchResolution.objects.create(
+            id=new_id,
+            reference=f"RES-{new_id:06d}",
+            dispatch_line=line,
+            action=action,
+            quantity=quantity,
+            note=note,
+            resolved_by=actor,
+            resolved_role=role,
+            is_self_approval=dispatch.received_by_id == actor.pk,  # OQ-9c: flagged, allowed
+            operation_id=operation_id,
+        )
+        movement_type, effects = _EFFECTS[action]
+        post_stock_changes(
+            [
+                StockChange(
+                    location=origin if side == "origin" else destination,
+                    item=line.item,
+                    bucket=bucket,
+                    delta=sign * quantity,
+                    movement_type=movement_type,
+                    source_type=SourceType.DISPATCH_RESOLUTION,
+                    source_id=resolution.pk,
+                    source_line_id=line.pk,
+                    source_ref=dispatch.reference,
+                )
+                for side, bucket, sign in effects
+            ],
+            actor=actor,
+            actor_role=role,
+            actor_location=origin if role == c.WAREHOUSE_ADMIN else destination,
+            operation_id=operation_id,
+            note=note,
+            audit_action="shortfall_stock_posted",
+        )
+        record_event(
+            "shortfall_resolved",
+            request=request,
+            actor=actor,
+            actor_role=role,
+            location=origin if role == c.WAREHOUSE_ADMIN else destination,
+            target_type="dispatch",
+            target_ref=dispatch.reference,
+            before={"remaining": remaining},
+            after={
+                "action": action,
+                "quantity": quantity,
+                "remaining": remaining - quantity,
+                "line_id": line.pk,
+            },
+            is_self_approval=resolution.is_self_approval,
+            operation_id=operation_id,
+        )
+    return line

@@ -112,12 +112,15 @@ def test_each_session_has_its_own_working_branch(users: dict[str, Any], location
     assert call(two, "GET", URL).json() == {"working_branch": None}
 
 
-def test_logging_out_forgets_the_working_branch(users: dict[str, Any], locations: Any) -> None:
+def test_logging_out_ends_the_session_and_a_same_day_login_restores_the_first_branch(
+    users: dict[str, Any], locations: Any
+) -> None:
     client = client_as(users["fs"])
     call(client, "PUT", URL, {"branch_id": locations["a"].pk})
     assert call(client, "POST", "/api/v1/auth/logout/", key=False).status_code == 204
-    fresh = client_as(users["fs"])
-    assert call(fresh, "GET", URL).json() == {"working_branch": None}
+    assert call(client, "GET", "/api/v1/auth/me/").status_code == 401  # the old session is gone
+    fresh = client_as(users["fs"])  # daily rule (owner): the first branch of the day comes back
+    assert call(fresh, "GET", URL).json()["working_branch"]["id"] == locations["a"].pk
 
 
 def test_same_key_replays_the_first_response_without_a_second_switch(
@@ -163,3 +166,81 @@ def test_all_branches_flag_only_for_super_admin(users: dict[str, Any]) -> None:
         for k in ("sa", "wa", "ba", "fs")
     }
     assert flags == {"sa": True, "wa": False, "ba": False, "fs": False}
+
+
+def relogin(client: Any, user: Any) -> Any:
+    from tests.conftest import login
+
+    assert login(client, user).status_code == 200
+    return client.get("/api/v1/auth/me/").json()
+
+
+def test_super_admin_always_starts_with_no_branch(users: dict[str, Any], locations: Any) -> None:
+    client = client_as(users["sa"])
+    assert call(client, "PUT", URL, {"branch_id": locations["a"].pk}).status_code == 200
+    me = relogin(client, users["sa"])  # live session, no logout
+    assert me["working_branch"] is None and me["must_pick_branch"] is False
+
+
+def test_front_staff_picks_on_the_first_login_of_the_day_and_later_logins_restore_it(
+    users: dict[str, Any], locations: Any
+) -> None:
+    client = client_as(users["fs"])
+    assert client.get("/api/v1/auth/me/").json()["must_pick_branch"] is True
+    assert call(client, "PUT", URL, {"branch_id": locations["a"].pk}).status_code == 200
+    me = relogin(client, users["fs"])  # again without logout: the first branch of the day
+    assert me["working_branch"]["id"] == locations["a"].pk and me["must_pick_branch"] is False
+    call(client, "POST", "/api/v1/auth/logout/")
+    me = relogin(client, users["fs"])  # after logout
+    assert me["working_branch"]["id"] == locations["a"].pk and me["must_pick_branch"] is False
+
+
+def test_a_later_switch_does_not_change_which_branch_a_new_login_restores(
+    users: dict[str, Any], locations: Any
+) -> None:
+    client = client_as(users["fs"])
+    call(client, "PUT", URL, {"branch_id": locations["a"].pk})
+    call(client, "PUT", URL, {"branch_id": locations["b"].pk})  # mid-day switch
+    assert client.get("/api/v1/auth/me/").json()["working_branch"]["id"] == locations["b"].pk
+    # Documented rule (owner): a new login restores the FIRST branch chosen that day, not the latest.
+    assert relogin(client, users["fs"])["working_branch"]["id"] == locations["a"].pk
+
+
+def test_a_new_day_asks_again(users: dict[str, Any], locations: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    client = client_as(users["fs"])
+    call(client, "PUT", URL, {"branch_id": locations["a"].pk})
+    real = timezone.now
+    monkeypatch.setattr(timezone, "now", lambda: real() + timedelta(days=1))  # Accra is UTC+0
+    me = relogin(client, users["fs"])
+    assert me["working_branch"] is None and me["must_pick_branch"] is True
+
+
+def test_a_deactivated_first_branch_is_not_restored(users: dict[str, Any], locations: Any) -> None:
+    client = client_as(users["fs"])
+    call(client, "PUT", URL, {"branch_id": locations["a"].pk})
+    locations["a"].is_active = False
+    locations["a"].save()
+    me = relogin(client, users["fs"])
+    assert me["working_branch"] is None and me["must_pick_branch"] is True
+
+
+def test_the_restore_is_per_user(users: dict[str, Any], locations: Any, make_user: Any) -> None:
+    other = make_user("front_staff")
+    call(client_as(users["fs"]), "PUT", URL, {"branch_id": locations["a"].pk})
+    assert client_as(other).get("/api/v1/auth/me/").json()["must_pick_branch"] is True
+
+
+def test_branch_admin_and_warehouse_admin_keep_their_permanent_location_after_a_second_login(
+    users: dict[str, Any], locations: Any
+) -> None:
+    from tests.conftest import login
+
+    for key, loc in (("ba", "a"), ("wa", "wh")):
+        client = client_as(users[key])
+        assert login(client, users[key]).status_code == 200
+        me = client.get("/api/v1/auth/me/").json()
+        assert me["working_branch"]["id"] == locations[loc].pk and me["must_pick_branch"] is False

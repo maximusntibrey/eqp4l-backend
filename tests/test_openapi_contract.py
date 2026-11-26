@@ -50,7 +50,7 @@ def operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
 def test_contract_is_valid_openapi(spec: dict[str, Any]) -> None:
     validate_schema(spec)
     assert spec["openapi"].startswith("3.")
-    assert spec["info"]["version"] == "0.3.2"
+    assert spec["info"]["version"] == "0.5.2"
 
 
 def test_every_path_is_versioned_or_health(spec: dict[str, Any]) -> None:
@@ -75,7 +75,7 @@ def test_idempotency_key_on_every_state_changing_op(spec: dict[str, Any]) -> Non
         if needs_key:
             count += 1
             assert {"400", "409"} <= set(op["responses"]), (path, method)  # bad key, key conflict
-    assert count == 19  # guards against an op silently dropping out of the check
+    assert count == 23  # guards against an op silently dropping out of the check
 
 
 def test_status_enums_match_mapping(spec: dict[str, Any]) -> None:

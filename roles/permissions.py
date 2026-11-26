@@ -38,6 +38,9 @@ ACTIONS = [
     "activity.view",
     "find.use",
     "dashboard.view",  # row 40: Home dashboard (SA, WA, BA)
+    "sales.cancel",  # row 39 (v0.4.2): SA, BA own branch
+    "items.import",  # rows 19, 20 (v0.4.2): SA, WA
+    "shortfalls.resolve",  # rows 33-35 (v0.5.0): view and resolve dispatch shortfalls, SA, WA, BA
 ]
 
 _EVERYONE = {
@@ -59,7 +62,9 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "goods_receipts.manage",
             "dispatches.create",
             "activity.view",  # row 41: warehouse activity (OQ-5)
+            "items.import",
             "dashboard.view",
+            "shortfalls.resolve",
         }
     ),
     c.BRANCH_ADMIN: frozenset(
@@ -69,8 +74,10 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "dispatches.waiting",
             "dispatches.receive",
             "sales.record",
+            "sales.cancel",
             "activity.view",
             "dashboard.view",
+            "shortfalls.resolve",
         }  # own branch (OQ-5)
     ),
     c.FRONT_STAFF: frozenset(_EVERYONE | {"working_branch.select", "dispatches.waiting", "sales.record"}),

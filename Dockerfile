@@ -16,5 +16,6 @@ CMD ["bash", "scripts/start.sh"]
 # Production image: runtime dependencies only.
 FROM base AS prod
 COPY --chown=app:app . .
+RUN mkdir -p /app/staticfiles /app/media /data/media && chown -R app:app /app/staticfiles /app/media /data/media
 USER app
 CMD ["bash", "scripts/start.sh"]

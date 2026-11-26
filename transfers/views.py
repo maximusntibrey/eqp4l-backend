@@ -4,8 +4,11 @@ Reads: SA and WA see every dispatch; BA and FS only those to their working branc
 otherwise, like a missing id). Waiting (row 30): SA, BA, FS, never WA.
 """
 
+import json
 from typing import Any, cast
 
+from django.db.models import F, IntegerField, Sum
+from django.db.models.functions import Coalesce
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, serializers
@@ -24,7 +27,7 @@ from roles import constants as c
 from roles.permissions import action_permissions
 from roles.services import active_role
 from transfers import services
-from transfers.models import Dispatch, DispatchLine, DispatchStatus
+from transfers.models import Dispatch, DispatchLine, DispatchResolution, DispatchStatus, ResolutionAction
 
 ERROR = OpenApiResponse(ErrorSerializer)
 IDEMPOTENCY = OpenApiParameter("Idempotency-Key", OpenApiTypes.UUID, OpenApiParameter.HEADER, required=True)
@@ -251,5 +254,146 @@ class DispatchReceiveView(APIView):
                 request._request, cast(User, request.user), id, data.validated_data, operation_id
             )
             return 200, dict(DispatchSerializer(services.dispatch_queryset().get(pk=dispatch.pk)).data)
+
+        return idempotent(request, work)
+
+
+class ResolutionSerializer(serializers.ModelSerializer[DispatchResolution]):
+    resolved_by = serializers.CharField(source="resolved_by.login_id")
+
+    class Meta:
+        model = DispatchResolution
+        fields = [
+            "reference",
+            "action",
+            "quantity",
+            "note",
+            "resolved_by",
+            "resolved_role",
+            "resolved_at",
+            "is_self_approval",
+        ]
+
+
+class ShortfallSerializer(serializers.ModelSerializer[DispatchLine]):
+    """One received dispatch line that came up short. `id` is the dispatch line id. Quantities only."""
+
+    dispatch_id = serializers.IntegerField()
+    dispatch_reference = serializers.CharField(source="dispatch.reference")
+    origin = BranchSerializer(source="dispatch.origin_location")
+    destination = BranchSerializer(source="dispatch.destination_location")
+    sku = serializers.CharField(source="item.sku")
+    item_name = serializers.CharField(source="item.name")
+    shortfall = serializers.SerializerMethodField()
+    resolved_quantity = serializers.SerializerMethodField()
+    remaining = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    received_at = serializers.DateTimeField(source="dispatch.received_at")
+    resolutions = ResolutionSerializer(many=True)
+
+    class Meta:
+        model = DispatchLine
+        fields = [
+            "id",
+            "dispatch_id",
+            "dispatch_reference",
+            "origin",
+            "destination",
+            "item_id",
+            "sku",
+            "item_name",
+            "qty_sent",
+            "qty_accepted",
+            "shortfall",
+            "resolved_quantity",
+            "remaining",
+            "status",
+            "received_at",
+            "resolutions",
+        ]
+
+    def get_shortfall(self, obj: DispatchLine) -> int:
+        return obj.qty_sent - cast(int, obj.qty_accepted)
+
+    def get_resolved_quantity(self, obj: DispatchLine) -> int:
+        return sum(r.quantity for r in obj.resolutions.all())
+
+    def get_remaining(self, obj: DispatchLine) -> int:
+        return self.get_shortfall(obj) - self.get_resolved_quantity(obj)
+
+    def get_status(self, obj: DispatchLine) -> str:
+        return "open" if self.get_remaining(obj) > 0 else "resolved"
+
+
+class ShortfallQuerySerializer(serializers.Serializer[object]):
+    status = serializers.ChoiceField(choices=["open", "resolved"], required=False)
+    dispatch_id = serializers.IntegerField(min_value=1, required=False)
+
+
+class ShortfallResolveSerializer(serializers.Serializer[object]):
+    resolution = serializers.ChoiceField(choices=ResolutionAction.choices)
+    quantity = serializers.IntegerField(min_value=1, max_value=1_000_000)
+    note = serializers.CharField(max_length=1000)  # blank is refused by the field; whitespace by the service
+
+
+class ShortfallListView(generics.GenericAPIView[DispatchLine]):
+    filter_backends = ()
+    serializer_class = ShortfallSerializer
+    permission_classes = action_permissions("shortfalls.resolve")
+
+    @extend_schema(
+        operation_id="shortfallsList",
+        tags=["shortfalls"],
+        parameters=[ShortfallQuerySerializer],
+        responses={200: ShortfallSerializer(many=True), 400: ERROR, 401: ERROR, 403: ERROR},
+    )
+    def get(self, request: Request) -> Response:
+        query = ShortfallQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        params = query.validated_data
+        qs = services.shortfall_lines(cast(User, request.user), request._request.session).order_by("-id")
+        if "dispatch_id" in params:
+            qs = qs.filter(dispatch_id=params["dispatch_id"])
+        # Open means some quantity is still unresolved; computed from the append-only resolution rows.
+        qs = qs.annotate(
+            resolved_total=Coalesce(Sum("resolutions__quantity"), 0, output_field=IntegerField())
+        )
+        if params.get("status") == "open":
+            qs = qs.filter(resolved_total__lt=F("qty_sent") - F("qty_accepted"))
+        elif params.get("status") == "resolved":
+            qs = qs.filter(resolved_total__gte=F("qty_sent") - F("qty_accepted"))
+        page = self.paginate_queryset(qs)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+
+class ShortfallResolveView(APIView):
+    permission_classes = action_permissions("shortfalls.resolve")
+
+    @extend_schema(
+        operation_id="shortfallsResolve",
+        tags=["shortfalls"],
+        parameters=[ID_PARAM, IDEMPOTENCY],
+        request=ShortfallResolveSerializer,
+        responses={
+            200: ShortfallSerializer,
+            400: ERROR,
+            401: ERROR,
+            403: ERROR,
+            404: ERROR,
+            409: ERROR,
+        },
+    )
+    def post(self, request: Request, id: int) -> Response:
+        data = ShortfallResolveSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        operation_id = operation_id_for(request)
+
+        def work() -> tuple[int, dict[str, Any]]:
+            line = services.resolve_shortfall(
+                request._request, cast(User, request.user), id, data.validated_data, operation_id
+            )
+            actor = cast(User, request.user)
+            fresh = services.shortfall_lines(actor, request._request.session).get(pk=line.pk)
+            return 200, json.loads(json.dumps(ShortfallSerializer(fresh).data, default=str))
 
         return idempotent(request, work)

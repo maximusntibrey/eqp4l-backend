@@ -1,0 +1,56 @@
+# Host-Agnostic Runbook
+
+## Environments
+
+- Local: Docker Compose with debug enabled.
+- Staging-equivalent: `docker compose -f docker-compose.yml -f docker-compose.staging.yml`.
+- Production: Railway project `test-production`; backend `eqp4l-backend`, frontend `p4l-inventory`.
+
+Railway uses the existing PostgreSQL service `Postgres` through `${{Postgres.DATABASE_URL}}`. Backend uploads use Django `FileSystemStorage` on a Railway Volume intended to be mounted at `/data` (`MEDIA_ROOT=/data/media`); no object-storage bucket is used. Public domains are `eqp4l-backend-production.up.railway.app` and `p4l-inventory-production.up.railway.app`. Confirm the actual volume mount in Railway before release.
+
+The deployment target is `main` for both services (verified with the Railway CLI). Production variables belong in Railway's variable store, never in git. The backend `DJANGO_ALLOWED_HOSTS` must include `healthcheck.railway.app` and `PORT` must match the domain target port (8080). The frontend `VITE_API_URL` must be set before its build and changes require a redeploy.
+
+## Production release gate
+
+Take a verified database-and-volume backup before loading real data. Railway Trial cannot create backups; use `scripts/backup.sh` / `scripts/backup.ps1` against the hosted database until a Railway backup is available.
+
+## Staging
+
+```powershell
+.\scripts\staging.ps1 up
+.\scripts\staging.ps1 smoke
+.\scripts\staging.ps1 down
+```
+
+The staging-equivalent configuration enables secure-cookie, redirect and HSTS settings. Set real hosts and Sentry DSN only through the secret store or environment variables.
+
+## Backup
+
+```powershell
+.\scripts\backup.ps1
+```
+
+To register a local daily 02:00 backup:
+
+```powershell
+.\scripts\backup-schedule.ps1
+```
+
+Local archives are retained for the whole project. Configure the production database and volume retention only after the owner-approved backup method is available; verify a restore before production release.
+
+## Restore
+
+Restore is only to a throwaway database. Use `scripts/restore-test.sh` from Bash or the documented Docker commands in `scripts/restore-test.sh`.
+
+## Rollback
+
+1. Stop new writes and inform the owner.
+2. Take a verified backup before rollback.
+3. Restore the previous application image/tag.
+4. Run migrations forward/back only after reviewing migration compatibility.
+5. Run `/health/`, login, dashboard, item list and Find smoke checks.
+6. Record the result in `docs/DEPLOYMENT_LOG.md`.
+
+## Monitoring
+
+Set `SENTRY_DSN` and `SENTRY_ENVIRONMENT` for a monitored environment. `/health/` must remain accessible and must check both application and database.

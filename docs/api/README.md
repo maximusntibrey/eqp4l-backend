@@ -1,13 +1,39 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.3.2), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.5.2), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
 - Every operation has `x-permission`, taken from `docs/design/PERMISSION_TABLE.md`.
 - Validated by `tests/test_openapi_contract.py` (schema validity, every path under `/api/v1/` or `/health/`, permission on every operation, Idempotency-Key on every state-changing operation except login, logout and password change, status enums match the SKILLS mapping, no cost field reachable by BA/FS).
 
+## Behaviour notes (no contract change)
+
+- Working branch at login (owner, 2026-11-24): every login starts a clean session. Front Staff pick the branch on the first login of the Africa/Accra day; any later login that day restores the FIRST branch chosen that day (a mid-day switch does not change it) and `/auth/me/` shows `must_pick_branch` false. A new day (local midnight), or a first branch that is no longer active, gives `must_pick_branch` true again. Super Admin always starts with no branch; Branch Admin and Warehouse Admin keep their permanent location.
+
 ## Changelog
+
+### 0.5.2 (2026-11-24, owner-approved; FQ-16; text only)
+- `/auth/me/` `home_links` gains a Shortfalls tile (`/shortfalls`, action `shortfalls.resolve`) for SA, WA and BA, next to the Activity tile (`/activity`, `activity.view`). Exact lists: SA Activity, Shortfalls, Sell, Find, Receive, Sales; WA Activity, Shortfalls; BA Activity, Shortfalls, Sales; FS none. Menus unchanged (never above 5). No schema change.
+
+### 0.5.1 (2026-11-24, Day 7 review; text only)
+- `GET /activity-log/`: `date_from` after `date_to` is documented as 400 on `date_to`. No schema change.
+
+### 0.5.0 (2026-11-24, owner-approved; Day 7, B7.1 to B7.3)
+- Additive only. `GET /dashboard/` response gains `low_stock_count`, `low_stock` (up to 10 rows) and `recent_activity` (latest 10 events), same scope as before, no cost.
+- New: `GET /activity-log/` (filters `user_id`, `branch_id`, `action`, `date_from`, `date_to`; row 41: SA all, WA warehouse, BA own branch; no cost, no before/after values). New schema `ActivityEvent`; existing `activity.view` is reused.
+- New: `GET /shortfalls/` (rows 33) and `POST /shortfalls/{id}/resolve/` (rows 34, 35; `id` is the dispatch line id; body `resolution` return_to_sender | confirm_loss | record_damage, `quantity`, mandatory `note`; 400/403/404/409 documented). New schemas `Shortfall`, `ShortfallResolve`; new action `shortfalls.resolve` (SA, WA, BA). Super Admin already has the Activity Home link.
+
+### 0.4.2 (2026-11-24, owner-approved; FQ-11)
+- `ActionPermission` gains `sales.cancel` (row 39: SA, BA) and `items.import` (rows 19, 20: SA, WA), so `/auth/me/` `permissions` tells the screens who may cancel and import. Sales entry (row 49): in `menu` for FS (5 items); in `home_links` for SA and BA, whose menus are already full. WA has no sales access.
+
+### 0.4.1 (2026-11-24, owner-approved; OQ-31)
+- New: `GET /costed-sales/` and `GET /costed-sales/{id}/` (SA only, table row 48): sale lines with `unit_cost` at 2 dp (the 4 dp snapshot rounded). Plain `/sales/` stays cost-free. New schema `CostedSale`.
+
+### 0.4.0 (2026-11-24, owner-approved, Day 6; additive only, TASKS OQ-31..33)
+- New: `GET/POST /sales/`, `GET /sales/{id}/`, `POST /sales/{id}/cancel/` (rows 36, 38, 39); `POST /item-imports/` (rows 19, 20, multipart, dry run). New schemas `Sale`, `SaleCreate`, `SaleCancel`, `SaleStatus`, `PaymentMethodCode`, `ItemImportRequest`, `ItemImportReport`; new tags `sales`, `imports`.
+- Find (B6.3) needs no new operation: `/items/?q=`, `/stock/` and `/items/{id}/branch-availability/` already cover it.
+- No published operation or schema changed. Sale payloads carry no cost (TASKS OQ-31).
 
 ### 0.3.2 (2026-11-24, owner-approved; OQ-30)
 

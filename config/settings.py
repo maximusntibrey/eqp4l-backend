@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import dj_database_url
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,15 +11,23 @@ env = environ.Env()
 # A local .env is optional (git-ignored); real environments set variables directly.
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
-SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="dev-only-insecure-key-change-me" if DEBUG else "")
+DEBUG = env.bool("DEBUG", default=env.bool("DJANGO_DEBUG", default=False))
+SECRET_KEY = env.str(
+    "SECRET_KEY",
+    default=env.str("DJANGO_SECRET_KEY", default="dev-only-insecure-key-change-me" if DEBUG else ""),
+)
 if not SECRET_KEY:
-    raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is false.")
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+    raise RuntimeError("SECRET_KEY or DJANGO_SECRET_KEY must be set when DEBUG is false.")
+ALLOWED_HOSTS = env.list(
+    "ALLOWED_HOSTS",
+    default=env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]),
+)
 
 INSTALLED_APPS = [
+    "django.contrib.admin",
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.messages",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "rest_framework",
@@ -48,16 +57,35 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
-TEMPLATES: list[dict[str, object]] = []  # API only; no server-rendered pages.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
 
-DATABASES = {"default": env.db("DATABASE_URL")}
-DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES = {
+    "default": dj_database_url.config(
+        env="DATABASE_URL",
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=env.int("DB_CONN_MAX_AGE", default=600 if not DEBUG else 60),
+    )
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Argon2 first; PBKDF2 stays so any hash made elsewhere can still be verified.
@@ -86,8 +114,21 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(
-    env.str("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+    env.str(
+        "MEDIA_ROOT",
+        default="/data/media" if not DEBUG else str(BASE_DIR / "media"),
+    )
 )  # item images; the host picks the disk
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    },
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+}
+
 
 # Secure sessions and cookies; defaults are strict whenever DEBUG is off.
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
@@ -97,19 +138,24 @@ SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 12)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
 CSRF_COOKIE_SAMESITE = env.str("CSRF_COOKIE_SAMESITE", default="Lax")
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[]),
+)
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
-SECURE_REDIRECT_EXEMPT = [r"^health/$"]  # container and CI health checks use plain http
+SECURE_REDIRECT_EXEMPT = [r"^health/$", r"^/health/$"]  # Railway healthcheck never requires HTTPS redirect
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=not DEBUG)
 SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
-if env.bool("SECURE_PROXY_SSL_HEADER_ENABLED", default=False):  # behind the host's HTTPS proxy
+if not DEBUG or env.bool("SECURE_PROXY_SSL_HEADER_ENABLED", default=False):  # behind the host's HTTPS proxy
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CORS_EXPOSE_HEADERS = ["Retry-After"]
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
@@ -130,18 +176,20 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.3.2",
+    "VERSION": "0.5.2",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "RoleCodeEnum": "accounts.serializers.ROLE_CHOICES",
         "ActionPermissionEnum": "roles.permissions.ACTIONS",
         "PersonPermissionEnum": "roles.constants.PERSON_PERMISSIONS",
         "UserStatusEnum": "accounts.models.UserStatus",
+        "ShortfallActionEnum": "transfers.models.ResolutionAction",
         "ItemStatusEnum": "inventory.models.ItemStatus",
         "ItemStatusTargetEnum": "inventory.serializers.STATUS_TARGETS",
         "MovementTypeEnum": "stock_ledger.models.MovementType",
         "ConditionEnum": "inventory.models.Condition",
         "GradeEnum": "inventory.models.Grade",
+        "SaleStatusEnum": "sales.models.SaleStatus",
         "UserStatusTargetEnum": "accounts.user_views.STATUS_TARGETS",
     },
 }
