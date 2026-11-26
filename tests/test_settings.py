@@ -80,6 +80,18 @@ def test_railway_environment_aliases(reload_settings) -> None:  # type: ignore[n
     assert s.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
 
 
+@pytest.mark.django_db
+def test_cors_exposes_retry_after_to_frontend(settings) -> None:  # type: ignore[no-untyped-def]
+    from rest_framework.test import APIClient
+
+    origin = "http://localhost:5173"
+    settings.CORS_ALLOWED_ORIGINS = [origin]
+    response = APIClient().get("/health/", HTTP_ORIGIN=origin)
+
+    assert response["Access-Control-Allow-Origin"] == origin
+    assert "retry-after" in response["Access-Control-Expose-Headers"].lower()
+
+
 def test_local_sqlite_and_volume_media_fallbacks(reload_settings, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.delenv("DATABASE_URL", raising=False)
     s = reload_settings(DJANGO_DEBUG="True", DJANGO_SECRET_KEY="x" * 50)
