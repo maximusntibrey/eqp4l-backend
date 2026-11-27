@@ -151,10 +151,13 @@ def test_branch_availability_shows_only_name_and_available_of_other_active_branc
     ba = client_as(users["ba"]).get(url)
     assert ba.status_code == 200
     assert ba.json() == [
-        {"branch_id": world["b"].pk, "branch_name": "Branch B", "quantity": 2}
+        {"branch_id": world["b"].pk, "branch_name": "Branch B", "kind": "branch", "quantity": 2}
     ]  # not own, not warehouse
     wa = client_as(users["wa"]).get(url).json()
-    assert [(r["branch_name"], r["quantity"]) for r in wa] == [("Branch A", 5), ("Branch B", 2)]
+    assert [(r["branch_name"], r["quantity"]) for r in wa] == [
+        ("Branch A", 5),
+        ("Branch B", 2),
+    ]  # own warehouse omitted
     mouse = client_as(users["wa"]).get(f"/api/v1/items/{world['mouse'].pk}/branch-availability/").json()
     assert [(r["branch_name"], r["quantity"]) for r in mouse] == [("Branch A", 7), ("Branch B", 0)]
     assert client_as(users["fs"]).get("/api/v1/items/99999/branch-availability/").status_code == 404

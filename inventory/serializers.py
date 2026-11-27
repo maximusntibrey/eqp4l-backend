@@ -204,6 +204,7 @@ class StockBalanceWithCostSerializer(StockBalanceSerializer):
 class BranchAvailabilitySerializer(serializers.Serializer[object]):
     branch_id = serializers.IntegerField()
     branch_name = serializers.CharField()
+    kind = serializers.ChoiceField(choices=["branch", "warehouse"])
     quantity = serializers.IntegerField(min_value=0)
 
 

@@ -18,6 +18,7 @@ Legend: Y = allowed. N = not allowed. SA = Super Admin, WA = Warehouse Admin, BA
 | WA | The central warehouse. Neutral ID `USR-0001`. | BE s2, FE s3 |
 | BA | One permanent branch. | BE s2 |
 | FS | Any active branch, chosen after login; switching is logged. | BE s2, OVR 1, GAPS C05 |
+| CW | Central warehouse view (contract 0.8.0, owner decision): reads every warehouse together, read-only. Neutral ID `USR-####`, no permanent location. | Owner |
 
 One account per person. Only SA can assign more than one role (role switching is Sprint 5, out of the MVP).
 
@@ -30,7 +31,9 @@ One account per person. Only SA can assign more than one role (role switching is
    Owner decision 2026-11-24: the SA is never asked to pick a branch at login. SA lists, users and the dashboard show all branches by default, with an optional `?branch=<id>` filter to view one; every action available to SA works on any branch, and an action on a record uses that record's location (OQ-12). The server returns `must_pick_branch` true only when the role requires a working branch and none is chosen (FS); it is always false for SA.
 5. **Cross-branch lookup exception:** any logged-in user sees other branches' available quantity for a selected item, as branch name and quantity only. No prices, costs, customers or sales. (BE s2, OVR 2)
 6. Only active users and active branches can act; deactivated records keep their history. (BE s2)
-7. Cost price is never returned for BA or FS (not hidden in the screen, not serialised). (OVR 7, TASKS 0.3)
+7. Cost price is never returned for BA, FS or CW (not hidden in the screen, not serialised). (OVR 7, TASKS 0.3)
+
+8. **Warehouses behave like branches (contract 0.8.0, owner decision):** a WA controls and reads only what is in their own warehouse (stock, receipts, dispatches). Another warehouse is visible to WA, SA and CW only through the cross-location lookup (rule 5): name, kind and available quantity. A WA acting in another warehouse is 403 `wrong_branch`; reading another warehouse's receipt or dispatch is 404. CW reads all warehouses together and writes nothing. Section 4.11 lists the CW rows.
 
 ## 3. Per-person permissions (granted by SA, from the user edit screen until Sprint 5)
 
@@ -155,6 +158,24 @@ Each entry is shown only to a role that holds the row it points to. Super Admin 
 | 46 | Find entry (`find.use`) | Y | Y | Y | Y | Rows 13 and 22. SA: Home link (FE s3). Others: existing nav item. |
 | 47 | Receive entry (`dispatches.receive`) | Y | N | Y | Grant | Same as row 31. SA: Home link (FE s3). BA, FS: existing nav item. |
 | 50 | Design system showcase (`design_system.view`, frontend `/design-system`) | Y | N | N | N | Owner decision (contract 0.7.0). Super Admin only; no menu entry or tile. Server refuses nothing itself (the page is frontend only); the action in `/auth/me/` `permissions` is what the frontend checks. |
+
+### 4.11 Central warehouse (CW, contract 0.8.0)
+
+The role code is `central_warehouse`. It is read-only: every write row (4 to 8, 11, 15 to 20, 23, 25, 28, 31, 33 to 36, 39, 43) is N. Super Admin creates and assigns it (rows 4 to 6); it has no permanent location.
+
+| Row | Action | CW | Notes |
+|---|---|---|---|
+| 12 | List active branches | Y | |
+| 13 | View and search items | Y | no cost (row 14 is N) |
+| 21 | View stock balances and movements | all warehouses | warehouse rows only, no branches; no cost |
+| 22 | Cross-location quantity lookup | Y | other branches and warehouses: name, kind, quantity |
+| 27 | List and view receipts (`goods_receipts.view`) | all warehouses | read only; the same action lets SA and WA read (WA: own warehouse) |
+| 29 | List dispatches and status | sent from any warehouse | read only |
+| 46 | Find entry | Y | |
+
+CW has no dashboard (row 40), no activity log (row 41), no user list (row 9) and no per-person write rights beyond what Super Admin grants through "Manage prices" (row 16). Open question OQ-41: should CW also write across warehouses.
+
+Changed rows for WA (0.8.0): row 21 is the own warehouse plus branch quantities, row 27 own warehouse receipts, row 29 dispatches sent from the own warehouse.
 
 ## 5. Self-approval rules
 

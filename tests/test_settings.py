@@ -92,6 +92,25 @@ def test_cors_exposes_retry_after_to_frontend(settings) -> None:  # type: ignore
     assert "retry-after" in response["Access-Control-Expose-Headers"].lower()
 
 
+@pytest.mark.django_db
+def test_cors_preflight_allows_idempotency_key_header(settings) -> None:  # type: ignore[no-untyped-def]
+    """Every write sends Idempotency-Key; the browser preflight must allow it or writes fail cross-site."""
+    from rest_framework.test import APIClient
+
+    origin = "https://frontend.up.railway.app"
+    settings.CORS_ALLOWED_ORIGINS = [origin]
+    response = APIClient().options(
+        "/api/v1/items/",
+        HTTP_ORIGIN=origin,
+        HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+        HTTP_ACCESS_CONTROL_REQUEST_HEADERS="content-type,x-csrftoken,idempotency-key",
+    )
+
+    assert response.status_code == 200
+    allowed = response["Access-Control-Allow-Headers"].lower()
+    assert "idempotency-key" in allowed and "x-csrftoken" in allowed
+
+
 def test_local_sqlite_and_volume_media_fallbacks(reload_settings, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.delenv("DATABASE_URL", raising=False)
     s = reload_settings(DJANGO_DEBUG="True", DJANGO_SECRET_KEY="x" * 50)

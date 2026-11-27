@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.7.0), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.8.0), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -12,6 +12,12 @@
 - Working branch at login (owner, 2026-11-24): every login starts a clean session. Front Staff pick the branch on the first login of the Africa/Accra day; any later login that day restores the FIRST branch chosen that day (a mid-day switch does not change it) and `/auth/me/` shows `must_pick_branch` false. A new day (local midnight), or a first branch that is no longer active, gives `must_pick_branch` true again. Super Admin always starts with no branch; Branch Admin and Warehouse Admin keep their permanent location.
 
 ## Changelog
+
+### 0.8.0 (minor, additive; per-warehouse scoping and the central warehouse role)
+- New role code `central_warehouse` (`RoleCode`): read-only view across every warehouse, no permanent location (must be absent on create), no cost, no writes. Super Admin creates and assigns it like any role (`POST /users/`, `PATCH /users/{id}/`). `/auth/me/` for this role: `permissions` = `items.view`, `stock.view`, `stock.lookup_other_branches`, `branches.view`, `dispatches.view`, `find.use`, `goods_receipts.view`; `menu` = Stock (`/stock`), Receipts (key `receive_stock`, `/receive-stock`), Dispatch (`/dispatch`), Find; no home links, no dashboard (403).
+- New action `goods_receipts.view` (`ActionPermission`): read receipts. SA, WA and the central role hold it; `goods_receipts.manage` (write) stays SA and WA.
+- Warehouse Admin now acts and reads only in their own warehouse: `GET /goods-receipts/` and `/goods-receipts/{id}/` (another warehouse's receipt is 404), `GET /dispatches/` and `/dispatches/{id}/` (sent from their warehouse; else 404), `/stock/` and `/stock/movements/` (own warehouse plus branches, never another warehouse's rows), `/costed-stock/` (own warehouse). Writes to another warehouse stay 403 `wrong_branch`. The central role reads receipts, dispatches, stock and movements of all warehouses (no branches), never cost.
+- `GET /items/{id}/branch-availability/` also lists other warehouses (name and available quantity only) for SA, WA and the central role; each row gains `kind` (`branch` or `warehouse`). BA and FS still see branches only.
 
 ### 0.7.0 (minor; several warehouses, required branch type, design-system permission)
 - `POST /branches/`: `branch_type` is now required (400 on `branch_type`). Several warehouses may exist; the "A warehouse already exists." refusal is gone. `PATCH`: branch to warehouse is allowed; warehouse to branch is 400 on `branch_type` once stock balances, goods receipts or dispatches reference the row. The last active warehouse still cannot be deactivated (409).

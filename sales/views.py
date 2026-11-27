@@ -17,8 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import User
-from accounts.serializers import ErrorSerializer
-from branches.models import Location
+from accounts.serializers import BranchSerializer, ErrorSerializer
 from config.errors import ApiError
 from config.idempotency import idempotent, operation_id_for
 from inventory.services import money
@@ -84,14 +83,8 @@ class SaleCancellationSerializer(serializers.ModelSerializer[SaleCancellation]):
         fields = ["reason", "cancelled_by", "cancelled_role", "cancelled_at"]
 
 
-class SaleBranchSerializer(serializers.ModelSerializer[Location]):
-    class Meta:
-        model = Location
-        fields = ["id", "kind", "code", "name", "is_active"]
-
-
 class SaleSerializer(serializers.ModelSerializer[Sale]):
-    location = SaleBranchSerializer()
+    location = BranchSerializer()
     staff = serializers.CharField(source="staff.login_id")
     payment_method = serializers.CharField(source="payment_method.code")
     status = serializers.ChoiceField(choices=SaleStatus.choices)

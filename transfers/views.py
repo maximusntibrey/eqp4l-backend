@@ -1,13 +1,14 @@
 """Dispatch API (B5.2 to B5.4; PERMISSION_TABLE rows 28 to 31).
 
-Reads: SA and WA see every dispatch; BA and FS only those to their working branch (404 not_found
-otherwise, like a missing id). Waiting (row 30): SA, BA, FS, never WA.
+Reads: SA sees every dispatch; WA those sent from their own warehouse; the central warehouse user those
+sent from any warehouse; BA and FS only those to their working branch (404 not_found otherwise, like a
+missing id). Waiting (row 30): SA, BA, FS, never WA.
 """
 
 import json
 from typing import Any, cast
 
-from django.db.models import F, IntegerField, Sum
+from django.db.models import F, IntegerField, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -137,6 +138,19 @@ class WaitingQuerySerializer(serializers.Serializer[object]):
     branch_id = serializers.IntegerField(min_value=1, required=False)
 
 
+def scoped_dispatches(request: Request) -> QuerySet[Dispatch]:
+    """Dispatches the caller may read (rows 29, 30)."""
+    qs = services.dispatch_queryset()
+    role = active_role(cast(User, request.user))
+    if role == c.SUPER_ADMIN:
+        return qs
+    if role == c.CENTRAL_WAREHOUSE:
+        return qs.filter(origin_location__kind=LocationKind.WAREHOUSE)
+    if role == c.WAREHOUSE_ADMIN:
+        return qs.filter(origin_location_id=cast(User, request.user).permanent_location_id)
+    return qs.filter(destination_location_id=visible_location(request, None))  # BA, FS: 403 without a branch
+
+
 class DispatchListCreateView(generics.GenericAPIView[Dispatch]):
     filter_backends = ()
     serializer_class = DispatchSerializer
@@ -155,8 +169,10 @@ class DispatchListCreateView(generics.GenericAPIView[Dispatch]):
         query = DispatchQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         params = query.validated_data
-        qs = services.dispatch_queryset().order_by("-id")
-        if (destination := visible_location(request, params.get("destination_id"))) is not None:
+        qs = scoped_dispatches(request).order_by("-id")
+        if (destination := params.get("destination_id")) is not None:
+            if active_role(cast(User, request.user)) in (c.BRANCH_ADMIN, c.FRONT_STAFF):
+                visible_location(request, destination)  # another branch is 403 wrong_branch
             qs = qs.filter(destination_location_id=destination)
         if "status" in params:
             qs = qs.filter(status=params["status"])
@@ -226,12 +242,9 @@ class DispatchDetailView(APIView):
         responses={200: DispatchSerializer, 401: ERROR, 403: ERROR, 404: ERROR},
     )
     def get(self, request: Request, id: int) -> Response:
-        dispatch = services.dispatch_queryset().filter(pk=id).first()
-        if dispatch is None:
+        dispatch = scoped_dispatches(request).filter(pk=id).first()
+        if dispatch is None:  # out of scope looks like a missing id: no leak (OQ-30)
             raise ApiError(404, "not_found", "Not found.")
-        own = visible_location(request, None)  # None for SA and WA; BA and FS: own branch only
-        if own is not None and own != dispatch.destination_location_id:
-            raise ApiError(404, "not_found", "Not found.")  # same as a missing id: no leak (OQ-30)
         return Response(DispatchSerializer(dispatch).data)
 
 

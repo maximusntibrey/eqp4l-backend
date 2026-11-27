@@ -50,7 +50,7 @@ def operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
 def test_contract_is_valid_openapi(spec: dict[str, Any]) -> None:
     validate_schema(spec)
     assert spec["openapi"].startswith("3.")
-    assert spec["info"]["version"] == "0.7.0"
+    assert spec["info"]["version"] == "0.8.0"
 
 
 def test_every_path_is_versioned_or_health(spec: dict[str, Any]) -> None:
