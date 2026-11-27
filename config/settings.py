@@ -4,6 +4,7 @@ from pathlib import Path
 
 import dj_database_url
 import environ
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -155,6 +156,8 @@ if not DEBUG or env.bool("SECURE_PROXY_SSL_HEADER_ENABLED", default=False):  # b
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_EXPOSE_HEADERS = ["Retry-After"]
+# Every POST, PUT and PATCH sends Idempotency-Key; without it the browser preflight fails cross-site.
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
