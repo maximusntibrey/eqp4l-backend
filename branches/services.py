@@ -1,25 +1,28 @@
 """Branch management (B3.2, PERMISSION_TABLE rows 11-12). Super Admin only; history is kept.
 
-Rules: `branch_type` (stored as `kind`) defaults to branch on create; only one warehouse may exist (seeded),
-so a second one, or changing the type of an existing row, is refused with 400 on `branch_type`; code and name
-are unique; the warehouse cannot be deactivated; deactivated branches keep every record but nothing can
-act in them.
+Rules: `branch_type` (stored as `kind`) is required on create; several warehouses may exist. Changing a
+warehouse into a branch is refused with 400 on `branch_type` once the row has stock balances, goods receipts
+or dispatches; a branch may become a warehouse. Code and name are unique; the last active warehouse cannot
+be deactivated; deactivated branches keep every record but nothing can act in them.
 Audit events written: branch_created, branch_updated, branch_deactivated, branch_activated.
 """
 
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 
 from accounts.models import User
 from audit.services import record_event
 from branches.models import Location, LocationKind
 from config.errors import ApiError
+from inventory.models import StockBalance
 from roles import constants as c
 from roles.permissions import require_action
 from roles.services import active_role
+from transfers.models import Dispatch
+from warehouse.models import GoodsReceipt
 
 
 def visible_locations(actor: User, is_active: bool | None = None) -> QuerySet[Location]:
@@ -79,8 +82,13 @@ def _clean(data: dict[str, Any], location: Location | None = None) -> dict[str, 
     return cleaned
 
 
-def _one_warehouse() -> ApiError:
-    return ApiError(400, "validation_error", "A warehouse already exists.", "branch_type")
+def _has_history(location: Location) -> bool:
+    """Stock balances, goods receipts or dispatches reference the row (a warehouse's reason to stay one)."""
+    return (
+        StockBalance.objects.filter(location=location).exists()
+        or GoodsReceipt.objects.filter(location=location).exists()
+        or Dispatch.objects.filter(Q(origin_location=location) | Q(destination_location=location)).exists()
+    )
 
 
 def create_branch(request: HttpRequest, actor: User, data: dict[str, Any]) -> Location:
@@ -89,16 +97,14 @@ def create_branch(request: HttpRequest, actor: User, data: dict[str, Any]) -> Lo
     for field in ("code", "name"):
         if field not in data:
             raise ApiError(400, "validation_error", f"Enter a {field}.", field)
-    kind = data.get("branch_type", LocationKind.BRANCH)
-    if kind == LocationKind.WAREHOUSE and Location.objects.filter(kind=kind).exists():
-        raise _one_warehouse()
+    kind = data.get("branch_type")
+    if kind not in LocationKind.values:
+        raise ApiError(400, "validation_error", "Choose a branch type.", "branch_type")
     try:
         with transaction.atomic():
             location = Location.objects.create(kind=kind, created_by=actor, updated_by=actor, **_clean(data))
             _audit(request, actor, "branch_created", location, after=_snapshot(location))
-    except IntegrityError:  # a concurrent create took the code, name or the warehouse slot first
-        if kind == LocationKind.WAREHOUSE and Location.objects.filter(kind=kind).exists():
-            raise _one_warehouse() from None
+    except IntegrityError:  # a concurrent create took the code or name first
         raise ApiError(409, "conflict", "That code or name is already in use.") from None
     return location
 
@@ -106,8 +112,8 @@ def create_branch(request: HttpRequest, actor: User, data: dict[str, Any]) -> Lo
 def update_branch(request: HttpRequest, actor: User, location_id: int, data: dict[str, Any]) -> Location:
     """Edit code, name and/or type (row 11). Writes audit `branch_updated`.
 
-    Type changes are refused (open question: multiple warehouses): the one warehouse is the receiving point
-    and must stay, and a second one cannot exist. Sending the current type is accepted and changes nothing.
+    A branch may become a warehouse. A warehouse may become a branch only while no stock balance, goods
+    receipt or dispatch references it (400 on `branch_type`).
     """
     require_action(actor, "branches.manage")
     if not data.keys() & {"code", "name", "branch_type"}:
@@ -119,15 +125,19 @@ def update_branch(request: HttpRequest, actor: User, location_id: int, data: dic
                 raise ApiError(404, "not_found", "No such branch.")
             new_kind = data.get("branch_type", location.kind)
             if new_kind != location.kind:
-                if new_kind == LocationKind.WAREHOUSE:
-                    raise _one_warehouse()
-                raise ApiError(
-                    400, "validation_error", "The warehouse cannot become a branch.", "branch_type"
-                )
+                if new_kind not in LocationKind.values:
+                    raise ApiError(400, "validation_error", "Choose a branch type.", "branch_type")
+                if new_kind == LocationKind.BRANCH and _has_history(location):
+                    raise ApiError(
+                        400,
+                        "validation_error",
+                        "This warehouse has stock or history and cannot become a branch.",
+                        "branch_type",
+                    )
             before = _snapshot(location)
             for field, value in _clean(data, location).items():
                 setattr(location, field, value)
-            location.updated_by = actor
+            location.kind, location.updated_by = new_kind, actor
             location.save()
             _audit(request, actor, "branch_updated", location, before=before, after=_snapshot(location))
     except IntegrityError:
@@ -145,8 +155,17 @@ def set_branch_active(request: HttpRequest, actor: User, location_id: int, activ
         location = Location.objects.select_for_update().filter(pk=location_id).first()
         if location is None:
             raise ApiError(404, "not_found", "No such branch.")
-        if not active and location.kind == LocationKind.WAREHOUSE:
-            raise ApiError(409, "invalid_status_transition", "The warehouse cannot be deactivated.")
+        if (
+            not active
+            and location.kind == LocationKind.WAREHOUSE
+            and location.is_active
+            and not Location.objects.filter(kind=LocationKind.WAREHOUSE, is_active=True)
+            .exclude(pk=location.pk)
+            .exists()
+        ):
+            raise ApiError(
+                409, "invalid_status_transition", "The last active warehouse cannot be deactivated."
+            )
         if location.is_active == active:
             raise ApiError(
                 409,

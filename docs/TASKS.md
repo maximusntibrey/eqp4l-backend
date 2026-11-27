@@ -689,6 +689,17 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 - [x] A.3 Menu entry: the existing `activity` home link already serves SA, WA and BA and is absent for FS; no new code added (nav is full at 5 items). Test: `test_audit_menu_entry_is_for_admin_roles_only`.
 - [x] BT.A.C Contract 0.6.0 (additive) in `docs/api/openapi.yaml`, `docs/api/README.md` changelog, `config/settings.py`. Frontend sync is a separate step in its own repo.
 
+## MULTIPLE WAREHOUSES AND DESIGN-SYSTEM PERMISSION (branch `feat/multi-warehouse-design-permission`, contract 0.7.0)
+
+- [x] MW.1 Several warehouses (owner decision): migration `branches/0002_drop_locations_one_warehouse` drops `locations_one_warehouse` (0 rows affected, constraint only; `locations_kind_valid` kept). Reverse refuses with a clear error while more than one warehouse exists. `branch_type` required on create (400 on `branch_type`), optional on PATCH. Warehouse to branch is 400 on `branch_type` once the row has stock balances, goods receipts or dispatches; branch to warehouse allowed. The last active warehouse still cannot be deactivated (409). Tests: `tests/test_branches_api.py`, `tests/test_multi_warehouse.py`.
+- [x] MW.2 Optional `warehouse_id` on goods receipt and dispatch create: omitted with one active warehouse uses it; omitted with several is 400 on `warehouse_id` ("Choose a warehouse."); given must be an active warehouse else 400. Permission rules unchanged (no per-warehouse scoping). Stock, dashboard and ledger checked for single-warehouse assumptions: none found (all filter by kind or location id). Tests: `tests/test_multi_warehouse.py`.
+- [x] DP.1 Permission `design_system.view` (SA only, table row 50) in `ACTIONS`, `/auth/me/` `permissions`, PERMISSION_TABLE, matrix and `/me` tests.
+- [x] MW.C Contract 0.7.0 (`openapi.yaml`, `docs/api/README.md`, settings, contract test). Frontend sync is a separate step in its own repo.
+
+### Later (not scheduled)
+
+- [ ] AL.D Audit log richer Details. Backend: return more detail fields on activity events (for example before and after values, quantities, references, within the existing cost and scope rules) and allow search over them under a documented rule (OQ-37b today excludes stored values). Frontend: a Details column. Needs its own contract bump.
+
 ## DECISION LOG (working copy)
 
 | Date | Decision | By |
@@ -769,8 +780,11 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-33 | Sales: (a) customer name and phone (required for warranty items per BE s6) have no column on `sales_sale`, so they need a migration and a rule for which items are warranty-bearing; not built. (b) The frontend needs the payment-method list; built as fixed codes cash, mobile_money, card in the contract enum, with no list endpoint. (c) Sale detail of another branch is 404 for BA and FS (OQ-30 style); a list `branch` filter for another branch is 403. | backend-dev, B6.1-B6.2 | Approved (owner, relayed by the orchestrator): fixed payment codes kept; customer name and phone deferred to Sprint 3 | Owner |
 | OQ-34 | CSV formula injection: a future CSV export (B40.1) must neutralise cells that start with `=`, `+`, `-` or `@` (for example by prefixing a quote), because item names, SKUs and notes come from users and imports. The import itself stores text as given (`inventory/imports.py` `_lookup`). Decide the exact rule before B40.1. | backend-dev, Day 6 review | Open | Owner |
 | OQ-35 | Upload size: the import checks 2 MB after the body is read (`inventory/imports.py` `_parse`); the real limit on request bodies must also be set by the host or proxy (see README Deploy notes). Add to the O2.1 deployment checklist. | backend-dev, Day 6 review | Open (confirm host body limit before deployment) | Owner |
-| OQ-36 | Branch type: may the system hold more than one warehouse? Built: `branch_type` is the existing `kind`; the one-warehouse constraint stays, a second warehouse is 400 on `branch_type`, and no existing row can change type. Also: `branch_type` is optional on create (default `branch`) so current clients keep working; the brief asked for required. Goods receipts, dispatch sources and destinations, stock, dashboard and user assignment keep their current rules; no rule was tied to the type. | backend-dev, BT.1 | Open | Owner |
+| OQ-36 | RESOLVED by the owner: several warehouses are allowed and `branch_type` is required on create (MW.1, MW.2). Original text: Branch type: may the system hold more than one warehouse? Built: `branch_type` is the existing `kind`; the one-warehouse constraint stays, a second warehouse is 400 on `branch_type`, and no existing row can change type. Also: `branch_type` is optional on create (default `branch`) so current clients keep working; the brief asked for required. Goods receipts, dispatch sources and destinations, stock, dashboard and user assignment keep their current rules; no rule was tied to the type. | backend-dev, BT.1 | Open | Owner |
 | OQ-37 | Activity log: (a) the sidebar entry stays the `activity` home link (SA, WA, BA); an `audit_logs` menu code was not added because every nav is full at 5 items. (b) Search covers action, target type, target ref and user login id, never stored values. (c) Export cap is 5000 rows. Confirm or change. | backend-dev, A.1-A.3 | Open | Owner |
+| OQ-38 | Per-warehouse scoping: a Warehouse Admin acts only in their own permanent location, so with several warehouses they cannot receive into another (403 `wrong_branch`). Built unchanged. Should a Warehouse Admin be allowed in several warehouses, or only their own? | backend-dev, MW.2 | Open | Owner |
+| OQ-39 | Transfers between warehouses: dispatch destinations stay branches only. Are warehouse to warehouse transfers wanted? | backend-dev, MW.2 | Open | Owner |
+| OQ-40 | Default warehouse per user or branch: today `warehouse_id` is required with several warehouses and no default exists. Should a user or branch have a default warehouse? | backend-dev, MW.2 | Open | Owner |
 
 ## FIX LOG
 

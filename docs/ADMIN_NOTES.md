@@ -17,7 +17,8 @@ The development seed creates `SA-0001`, `USR-0001`, `USR-0002` and `USR-0003`. L
 ## Daily administration
 
 - Super Admin manages users, branches, item access and permissions.
-- Warehouse Admin receives stock and creates dispatches.
+- Warehouse Admin receives stock and creates dispatches, in their own warehouse. Several warehouses may exist: with more than one, the receipt and dispatch forms must send `warehouse_id`. A Warehouse Admin cannot act in another warehouse.
+- Rollback note: migration `branches/0002` can only be reversed while one warehouse exists.
 - Branch Admin receives deliveries and records sales where permitted.
 - Front Staff records sales and can receive stock only through an explicit grant.
 - User suspensions and deactivations take effect server-side.

@@ -41,6 +41,7 @@ ACTIONS = [
     "sales.cancel",  # row 39 (v0.4.2): SA, BA own branch
     "items.import",  # rows 19, 20 (v0.4.2): SA, WA
     "shortfalls.resolve",  # rows 33-35 (v0.5.0): view and resolve dispatch shortfalls, SA, WA, BA
+    "design_system.view",  # row 50 (v0.7.0): frontend /design-system showcase, SA only
 ]
 
 _EVERYONE = {
