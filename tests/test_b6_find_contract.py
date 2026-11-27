@@ -55,11 +55,12 @@ def test_every_role_can_search_and_look_up_other_branches(
         found = client.get("/api/v1/items/", {"q": term})
         assert found.status_code == 200 and [i["sku"] for i in found.json()["results"]] == ["SKU-L"], term
     rows = client.get(f"/api/v1/items/{laptop.pk}/branch-availability/").json()
-    assert all(set(r) == {"branch_id", "branch_name", "quantity"} for r in rows)
+    assert all(set(r) == {"branch_id", "branch_name", "kind", "quantity"} for r in rows)
     by_name = {r["branch_name"]: r["quantity"] for r in rows}
-    assert (
-        by_name["Branch B"] == 7 and "Central Warehouse" not in by_name
-    )  # branches only, never the warehouse
+    assert by_name["Branch B"] == 7
+    # 0.8.0: SA also sees warehouses; WA never their own; BA and FS branches only
+    assert ("Central Warehouse" in by_name) == (role == "sa")
+    assert by_name.get("Central Warehouse", 40) == 40
     assert not (keys(rows) & set(COST_WORDS)) and "price" not in str(rows).lower()
 
 
@@ -80,7 +81,8 @@ def test_the_lookup_shows_available_not_on_hand_and_follows_sales(
     assert call(sa, "PUT", "/api/v1/working-branch/", {"branch_id": locations["a"].pk}).status_code == 200
     url = f"/api/v1/items/{laptop.pk}/branch-availability/"
     assert {r["branch_name"]: r["quantity"] for r in sa.get(url).json()} == {
-        "Branch B": 5
+        "Branch B": 5,
+        "Central Warehouse": 0,  # SA also sees warehouses (0.8.0)
     }  # 7 on hand - 2 reserved
     ba_b = client_as(users["ba"])  # BA of branch A looks at the others
     assert {r["branch_name"]: r["quantity"] for r in ba_b.get(url).json()} == {"Branch B": 5}

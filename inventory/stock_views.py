@@ -1,10 +1,12 @@
 """Stock query API (B4.4, PERMISSION_TABLE rows 21-22; contract /stock/, /costed-stock/, branch-availability).
 
-Scope: SA and WA see every location's quantities (OQ-8); BA and FS see only their working branch. Cost is
-read only through `/costed-stock/`: SA every location, WA warehouse rows only, BA and FS refused.
+Scope: SA sees every location; the central warehouse user every warehouse (no branches); WA their own
+warehouse plus branch quantities (OQ-8), never another warehouse's rows (those only through
+branch-availability: name and quantity); BA and FS only their working branch. Cost is read only through
+`/costed-stock/`: SA every location, WA own warehouse rows only, others refused.
 """
 
-from typing import cast
+from typing import Any, cast
 
 from django.db.models import F, Q, QuerySet
 from django.shortcuts import get_object_or_404
@@ -42,9 +44,11 @@ class StockQuerySerializer(serializers.Serializer[object]):
 
 
 def visible_location(request: Request, location_id: int | None) -> int | None:
-    """The one location the caller may see, or None for no restriction (SA, WA see every location)."""
+    """The one location the caller may see, or None for no single-location limit (SA, WA, central).
+
+    WA and central are narrowed by `_by_role` instead."""
     user = cast(User, request.user)
-    if active_role(user) in (c.SUPER_ADMIN, c.WAREHOUSE_ADMIN):
+    if active_role(user) in (c.SUPER_ADMIN, c.WAREHOUSE_ADMIN, c.CENTRAL_WAREHOUSE):
         return location_id
     own = working_branch(user, request._request)
     if own is None:
@@ -54,10 +58,21 @@ def visible_location(request: Request, location_id: int | None) -> int | None:
     return own.pk
 
 
+def _by_role(request: Request, qs: QuerySet[Any]) -> QuerySet[Any]:
+    """Rows the role may read: WA not another warehouse, central the warehouses only."""
+    user = cast(User, request.user)
+    role = active_role(user)
+    if role == c.CENTRAL_WAREHOUSE:
+        return qs.filter(location__kind=LocationKind.WAREHOUSE)
+    if role == c.WAREHOUSE_ADMIN:
+        return qs.filter(Q(location_id=user.permanent_location_id) | Q(location__kind=LocationKind.BRANCH))
+    return qs
+
+
 def scoped_balances(request: Request, location_id: int | None) -> QuerySet[StockBalance]:
     qs = StockBalance.objects.select_related("location", "item", "item__cost")
     location = visible_location(request, location_id)
-    return qs.filter(location_id=location) if location is not None else qs
+    return _by_role(request, qs.filter(location_id=location) if location is not None else qs)
 
 
 def _filtered(request: Request, costed: bool) -> QuerySet[StockBalance]:
@@ -66,7 +81,7 @@ def _filtered(request: Request, costed: bool) -> QuerySet[StockBalance]:
     params = query.validated_data
     qs = scoped_balances(request, params.get("location_id"))
     if costed and active_role(cast(User, request.user)) != c.SUPER_ADMIN:
-        qs = qs.filter(location__kind=LocationKind.WAREHOUSE)  # OQ-8: no cost on branch quantities for WA
+        qs = qs.filter(location__kind=LocationKind.WAREHOUSE)  # no cost on branch quantities (OQ-8)
     if "item_id" in params:
         qs = qs.filter(item_id=params["item_id"])
     if params.get("q"):
@@ -122,10 +137,17 @@ class BranchAvailabilityView(APIView):
         responses={200: BranchAvailabilitySerializer(many=True), 401: ERROR, 404: ERROR},
     )
     def get(self, request: Request, id: int) -> Response:
-        """Name and available quantity only, for every other active branch (row 22). No cost or sales."""
+        """Name, kind and available quantity only, for every other active location (row 22). No cost or sales.
+
+        Everyone sees the other branches; the other warehouses too, except Branch Admin and Front Staff.
+        """
         item = get_object_or_404(Item, pk=id)
-        own = working_branch(cast(User, request.user), request._request)
-        branches = Location.objects.filter(kind=LocationKind.BRANCH, is_active=True).order_by("id")
+        user = cast(User, request.user)
+        own = working_branch(user, request._request)
+        kinds = [LocationKind.BRANCH]
+        if active_role(user) not in (c.BRANCH_ADMIN, c.FRONT_STAFF):
+            kinds.append(LocationKind.WAREHOUSE)
+        branches = Location.objects.filter(kind__in=kinds, is_active=True).order_by("id")
         if own is not None:
             branches = branches.exclude(pk=own.pk)
         quantities = dict(
@@ -134,7 +156,8 @@ class BranchAvailabilityView(APIView):
             )
         )
         rows = [
-            {"branch_id": b.pk, "branch_name": b.name, "quantity": quantities.get(b.pk, 0)} for b in branches
+            {"branch_id": b.pk, "branch_name": b.name, "kind": b.kind, "quantity": quantities.get(b.pk, 0)}
+            for b in branches
         ]
         return Response(BranchAvailabilitySerializer(rows, many=True).data)
 
@@ -164,6 +187,7 @@ class StockMovementListView(generics.GenericAPIView[StockMovement]):
         qs = StockMovement.objects.select_related("location", "item", "actor").order_by("-id")
         if location is not None:
             qs = qs.filter(location_id=location)
+        qs = _by_role(request, qs)  # type: ignore[assignment]
         for field in ("item_id", "movement_type"):
             if field in params:
                 qs = qs.filter(**{field: params[field]})

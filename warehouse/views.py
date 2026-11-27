@@ -1,4 +1,8 @@
-"""Goods receipt API (B5.1; PERMISSION_TABLE rows 25 and 27): Super Admin and Warehouse Admin only."""
+"""Goods receipt API (B5.1; PERMISSION_TABLE rows 25 and 27).
+
+Write: SA and WA (own warehouse). Read: SA all, WA own warehouse only (out of scope is 404), the central
+warehouse user every warehouse, read-only. BA and FS never.
+"""
 
 from typing import Any, cast
 
@@ -6,15 +10,19 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, serializers
+from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import User
 from accounts.serializers import ErrorSerializer
+from branches.models import LocationKind
 from config.idempotency import idempotent, operation_id_for
 from inventory.services import money
-from roles.permissions import action_permissions
+from roles import constants as c
+from roles.permissions import action_permissions, has_action
+from roles.services import active_role
 from warehouse import services
 from warehouse.models import GoodsReceipt, GoodsReceiptLine
 
@@ -47,6 +55,13 @@ class ReceiptLineSerializer(serializers.ModelSerializer[GoodsReceiptLine]):
     def get_unit_cost(self, obj: GoodsReceiptLine) -> str | None:
         return money(obj.unit_cost)
 
+    def to_representation(self, instance: GoodsReceiptLine) -> Any:
+        data = super().to_representation(instance)
+        request = self.context.get("request")  # no request: the writer's own create response (SA, WA)
+        if request is not None and not has_action(request.user, "items.view_cost"):
+            data.pop("unit_cost")  # cost is SA and WA only (central warehouse reads without it)
+        return data
+
 
 class GoodsReceiptSerializer(serializers.ModelSerializer[GoodsReceipt]):
     location_id = serializers.IntegerField()
@@ -75,10 +90,24 @@ def _queryset() -> Any:
     return GoodsReceipt.objects.select_related("received_by").prefetch_related("lines__item")
 
 
+def _scoped(user: User) -> Any:
+    role = active_role(user)
+    if role == c.SUPER_ADMIN:
+        return _queryset()
+    if role == c.CENTRAL_WAREHOUSE:
+        return _queryset().filter(location__kind=LocationKind.WAREHOUSE)
+    if user.permanent_location_id is None:
+        return _queryset().none()
+    return _queryset().filter(location_id=user.permanent_location_id)
+
+
 class GoodsReceiptListCreateView(generics.GenericAPIView[GoodsReceipt]):
     filter_backends = ()
     serializer_class = GoodsReceiptSerializer
-    permission_classes = action_permissions("goods_receipts.manage")  # SA and WA, read and write
+
+    def get_permissions(self) -> list[BasePermission]:
+        action = "goods_receipts.view" if self.request.method == "GET" else "goods_receipts.manage"
+        return [p() for p in action_permissions(action)]
 
     @extend_schema(
         operation_id="goodsReceiptsList",
@@ -89,7 +118,7 @@ class GoodsReceiptListCreateView(generics.GenericAPIView[GoodsReceipt]):
     def get(self, request: Request) -> Response:
         query = ReceiptQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
-        qs = _queryset().order_by("-id")
+        qs = _scoped(cast(User, request.user)).order_by("-id")
         if name := query.validated_data.get("supplier_name", "").strip():
             qs = qs.filter(supplier_name__icontains=name)
         page = self.paginate_queryset(qs)
@@ -117,7 +146,7 @@ class GoodsReceiptListCreateView(generics.GenericAPIView[GoodsReceipt]):
 
 
 class GoodsReceiptDetailView(APIView):
-    permission_classes = action_permissions("goods_receipts.manage")
+    permission_classes = action_permissions("goods_receipts.view")
 
     @extend_schema(
         operation_id="goodsReceiptsRead",
@@ -126,4 +155,8 @@ class GoodsReceiptDetailView(APIView):
         responses={200: GoodsReceiptSerializer, 401: ERROR, 403: ERROR, 404: ERROR},
     )
     def get(self, request: Request, id: int) -> Response:
-        return Response(GoodsReceiptSerializer(get_object_or_404(_queryset(), pk=id)).data)
+        return Response(
+            GoodsReceiptSerializer(
+                get_object_or_404(_scoped(cast(User, request.user)), pk=id), context={"request": request}
+            ).data
+        )

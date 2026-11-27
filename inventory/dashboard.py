@@ -78,7 +78,7 @@ def dashboard_data(request: Request, user: User, branch_id: int | None = None) -
         in_transit_count = to_view.filter(origin_location__kind=LocationKind.WAREHOUSE).count()
     elif role == c.WAREHOUSE_ADMIN:
         waiting = 0
-        in_transit_count = in_transit.filter(origin_location__kind=LocationKind.WAREHOUSE).count()
+        in_transit_count = in_transit.filter(origin_location=location).count()  # own warehouse only
     else:  # BA: dispatches to the own branch; they are also what is waiting there
         waiting = in_transit_count = in_transit.filter(destination_location=location).count()
     data: dict[str, Any] = {
