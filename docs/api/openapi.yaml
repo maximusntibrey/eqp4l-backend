@@ -2014,7 +2014,7 @@ components:
         sku: {type: string, example: SKU-000001}
         name: {type: string}
         category_id: {type: integer}
-        subtype_id: {type: integer}
+        subtype_id: {type: integer, nullable: true, description: "Null for an item created by the CSV import without a subtype (v0.8.0)."}
         brand_id: {type: integer}
         brand_name: {type: string, readOnly: true}
         model_name: {type: string}

@@ -700,6 +700,25 @@ Branches: `sprint/9-phase2-complete` in both repos. Tag at end: `v2.4.0` on `mai
 
 - [ ] AL.D Audit log richer Details. Backend: return more detail fields on activity events (for example before and after values, quantities, references, within the existing cost and scope rules) and allow search over them under a documented rule (OQ-37b today excludes stored values). Frontend: a Details column. Needs its own contract bump.
 
+## WAREHOUSE SCOPING AND CENTRAL WAREHOUSE VIEW (branch `feat/warehouse-scoping-central`, contract 0.8.0)
+
+- [x] CW.1 New role `central_warehouse` (read-only view of every warehouse; no location, no cost, no writes). Table-driven: Role row added by data migration `roles/0002_central_warehouse_role` (1 row inserted, idempotent with the post_migrate seed; reverse refuses while a user holds it, else deletes the unused row). New action `goods_receipts.view`. Menu, `/auth/me/`, user management (Super Admin creates and assigns; a location on create is 400), dev seed user (`DEV_CENTRAL_WAREHOUSE_PASSWORD`, optional). Tests: `tests/test_permissions.py`, `tests/test_central_warehouse.py`.
+- [x] WS.1 Warehouses behave like branches: WA reads receipts, dispatches, stock and movements only for the own warehouse (another warehouse's receipt or dispatch is 404; stock keeps OQ-8 branch quantities); writes to another warehouse stay 403 `wrong_branch`. `branch-availability` lists other warehouses (SA, WA, central) with `kind`: name, kind, quantity only. Central reads all warehouses together; receipt `unit_cost` is dropped for readers without `items.view_cost`. Tests: `tests/test_central_warehouse.py`.
+- [x] WS.C Contract 0.8.0 (`openapi.yaml`, `docs/api/README.md`, settings, contract test, PERMISSION_TABLE section 4.11). Frontend sync is a separate step in its own repo. Also: `Item.subtype_id` is nullable.
+- [x] AM.1 `tests/test_api_matrix.py`: every operation in `openapi.yaml` for SA, WA, BA, FS and central (permitted 2xx, others 403, never 5xx), every write with and without a valid Idempotency-Key, the CORS preflight of every write path, and every GET response validated against its published schema (with seed data). Fixed from it: PATCH of an item with no sub-type was 400 `subtype_id` (now kept empty), sale objects lacked `branch_type` on `location`.
+- [x] AM.2 `scripts/api-smoke.py` (standard library only) and `docs/RUNBOOK.md` "API smoke test".
+
+### Later (not scheduled, added with contract 0.8.0)
+
+- [ ] LT.1 Transfers between warehouses. Dispatch destinations stay branches only today (OQ-39). Needs: destination may be a warehouse, a receiving warehouse admin, stock effects as for branches, and the scoping rules of WS.1.
+- [ ] LT.2 Dashboard cards shown as "Not available yet" in the frontend need data. Proposed `GET /api/v1/dashboard/` additions (all optional, role-scoped, none carrying cost to non-cost roles):
+  - `stock_value_total`: `{amount: Money}` on-hand quantity times average cost, SA and WA only (WA own warehouse).
+  - `items_without_selling_price`: `{count: int, items: [{item_id, sku, item_name}]}` (first 10), Active items with no price row.
+  - `sales_per_day`: `[{date: 'YYYY-MM-DD' (Africa/Accra), count: int, total: Money}]` for the last 7 days, branch scope as `/sales/`.
+  - `top_selling_items`: `[{item_id, sku, item_name, quantity: int}]` for the last 30 days (top 5), branch scope.
+  - `cancelled_sales_today`: `{count: int, total: Money}`, branch scope.
+  Each needs its own contract bump and tests.
+
 ## DECISION LOG (working copy)
 
 | Date | Decision | By |
@@ -785,6 +804,8 @@ Add a line here whenever a rule is missing, unclear or contradicted (rule 0.2). 
 | OQ-38 | Per-warehouse scoping: a Warehouse Admin acts only in their own permanent location, so with several warehouses they cannot receive into another (403 `wrong_branch`). Built unchanged. Should a Warehouse Admin be allowed in several warehouses, or only their own? | backend-dev, MW.2 | Open | Owner |
 | OQ-39 | Transfers between warehouses: dispatch destinations stay branches only. Are warehouse to warehouse transfers wanted? | backend-dev, MW.2 | Open | Owner |
 | OQ-40 | Default warehouse per user or branch: today `warehouse_id` is required with several warehouses and no default exists. Should a user or branch have a default warehouse? | backend-dev, MW.2 | Open | Owner |
+| OQ-41 | Central warehouse role (`central_warehouse`): read-only for now. Should it also write across warehouses (receive stock, dispatch from any warehouse)? Also: a "Manage prices" grant would let it set prices; confirm that is fine. | backend-dev, CW.1 | Open | Owner |
+| OQ-42 | WA `/stock/` still lists branch quantities (OQ-8) but no longer another warehouse's rows; other warehouses are seen through `branch-availability` (name, kind, quantity). Confirm. SA now also sees warehouses in that lookup. | backend-dev, WS.1 | Open | Owner |
 
 ## FIX LOG
 
