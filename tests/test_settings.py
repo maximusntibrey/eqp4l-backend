@@ -94,7 +94,7 @@ def test_cors_exposes_retry_after_to_frontend(settings) -> None:  # type: ignore
 
 @pytest.mark.django_db
 def test_cors_preflight_allows_idempotency_key_header(settings) -> None:  # type: ignore[no-untyped-def]
-    """Every write sends Idempotency-Key; the browser preflight must allow it or all writes fail cross-site."""
+    """Every write sends Idempotency-Key; the browser preflight must allow it or writes fail cross-site."""
     from rest_framework.test import APIClient
 
     origin = "https://frontend.up.railway.app"
