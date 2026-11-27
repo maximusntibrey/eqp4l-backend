@@ -176,7 +176,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.7.0",
+    "VERSION": "0.8.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "BranchTypeEnum": "branches.models.LocationKind",
@@ -208,6 +208,7 @@ DEV_SEED_PASSWORDS = {
     "WA": env.str("DEV_WAREHOUSE_ADMIN_PASSWORD", default=""),
     "BA": env.str("DEV_BRANCH_ADMIN_PASSWORD", default=""),
     "FS": env.str("DEV_FRONT_STAFF_PASSWORD", default=""),
+    "CW": env.str("DEV_CENTRAL_WAREHOUSE_PASSWORD", default=""),  # optional
 }
 
 # Error monitoring is on only when a DSN is configured.

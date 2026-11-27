@@ -216,7 +216,7 @@ def test_list_filters_and_paging(users: dict[str, Any], make_user: Callable[...,
     found = call(sa, "GET", URL, {"q": users["ba"].login_id.lower()}).json()
     assert [r["login_id"] for r in found["results"]] == [users["ba"].login_id]
     page = call(sa, "GET", URL, {"page_size": 2}).json()
-    assert page["count"] == 5 and len(page["results"]) == 2 and page["next"] and page["page_size"] == 2
+    assert page["count"] == 6 and len(page["results"]) == 2 and page["next"] and page["page_size"] == 2
     assert call(sa, "GET", URL, {"status": "gone"}).status_code == 400
     assert call(sa, "GET", URL, {"role": "owner"}).status_code == 400
     assert call(sa, "GET", f"{URL}99999/").status_code == 404
@@ -492,7 +492,7 @@ def test_super_admin_lists_all_branches_by_default_and_filters_users_by_branch(
 ) -> None:
     ba_b = make_user("branch_admin", "b")
     sa = client_as(users["sa"])
-    assert call(sa, "GET", URL).json()["count"] == 5  # all branches, nobody filtered out
+    assert call(sa, "GET", URL).json()["count"] == 6  # all branches, nobody filtered out
     only_b = call(sa, "GET", URL, {"branch": locations["b"].pk}).json()
     assert [r["login_id"] for r in only_b["results"]] == [ba_b.login_id]
     only_a = call(sa, "GET", URL, {"branch": locations["a"].pk}).json()

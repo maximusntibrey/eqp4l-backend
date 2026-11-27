@@ -26,6 +26,12 @@ MENUS: dict[str, list[tuple[str, str, str]]] = {
         ("dispatch", "Dispatch", "/dispatch"),
         _FIND,
     ],
+    c.CENTRAL_WAREHOUSE: [
+        _STOCK,
+        ("receive_stock", "Receipts", "/receive-stock"),
+        ("dispatch", "Dispatch", "/dispatch"),
+        _FIND,
+    ],
     c.SUPER_ADMIN: [
         _HOME,
         ("items", "Items", "/items"),

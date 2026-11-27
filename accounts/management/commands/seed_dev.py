@@ -47,7 +47,9 @@ DEV_USERS = [
     ("WA", "Dev Warehouse Admin", c.WAREHOUSE_ADMIN, "WH"),
     ("BA", "Dev Branch Admin", c.BRANCH_ADMIN, "ACC"),
     ("FS", "Dev Front Staff", c.FRONT_STAFF, None),
+    ("CW", "Dev Central Warehouse", c.CENTRAL_WAREHOUSE, None),  # optional: skipped without its password
 ]
+OPTIONAL_KEYS = {"CW"}
 BRANDS = ["HP", "Dell", "Lenovo", "Logitech"]
 # sku, name, category, brand, condition, price, average cost
 ITEMS = [
@@ -99,10 +101,12 @@ class Command(BaseCommand):
         self.stdout.write("seed_dev: done")
 
     def _passwords(self) -> dict[str, str]:
-        missing = [k for k, v in settings.DEV_SEED_PASSWORDS.items() if not v]
+        missing = [k for k, v in settings.DEV_SEED_PASSWORDS.items() if not v and k not in OPTIONAL_KEYS]
         if missing:
             raise CommandError(f"Set the dev seed passwords in .env (see .env.example): {', '.join(missing)}")
         for key, value in settings.DEV_SEED_PASSWORDS.items():
+            if not value:
+                continue
             try:
                 validate_password(value)
             except ValidationError as exc:
@@ -118,6 +122,8 @@ class Command(BaseCommand):
     def _users(self, passwords: dict[str, str], locations: dict[str, Location]) -> dict[str, User]:
         users: dict[str, User] = {}
         for key, name, role, loc_code in DEV_USERS:
+            if not passwords.get(key):
+                continue
             user = User.objects.filter(full_name=name).first()
             if user is None:
                 user, _otp = create_user(
