@@ -47,7 +47,7 @@ Restore is only to a throwaway database. Use `scripts/restore-test.sh` from Bash
 1. Stop new writes and inform the owner.
 2. Take a verified backup before rollback.
 3. Restore the previous application image/tag.
-4. Run migrations forward/back only after reviewing migration compatibility.
+4. Run migrations forward/back only after reviewing migration compatibility. `branches/0002` (drops the one-warehouse constraint) reverses only while at most one warehouse exists; otherwise it stops with an error and changes nothing.
 5. Run `/health/`, login, dashboard, item list and Find smoke checks.
 6. Record the result in `docs/DEPLOYMENT_LOG.md`.
 
