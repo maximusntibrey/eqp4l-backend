@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.6.0), written first for the frontend (TASKS B1.3).
+`openapi.yaml` is the published contract (OpenAPI 3.0.3, version 0.7.0), written first for the frontend (TASKS B1.3).
 
 - This file is the published contract. From B2 onward the drf-spectacular generated schema must match it; the diff is checked in B5.6.
 - Changes after publication need owner approval (SKILLS "API Development Standards"). Breaking changes only at a sprint boundary.
@@ -12,6 +12,11 @@
 - Working branch at login (owner, 2026-11-24): every login starts a clean session. Front Staff pick the branch on the first login of the Africa/Accra day; any later login that day restores the FIRST branch chosen that day (a mid-day switch does not change it) and `/auth/me/` shows `must_pick_branch` false. A new day (local midnight), or a first branch that is no longer active, gives `must_pick_branch` true again. Super Admin always starts with no branch; Branch Admin and Warehouse Admin keep their permanent location.
 
 ## Changelog
+
+### 0.7.0 (minor; several warehouses, required branch type, design-system permission)
+- `POST /branches/`: `branch_type` is now required (400 on `branch_type`). Several warehouses may exist; the "A warehouse already exists." refusal is gone. `PATCH`: branch to warehouse is allowed; warehouse to branch is 400 on `branch_type` once stock balances, goods receipts or dispatches reference the row. The last active warehouse still cannot be deactivated (409).
+- `POST /goods-receipts/` and `POST /dispatches/` accept an optional `warehouse_id`. Omitted with exactly one active warehouse: that one (old clients keep working). Omitted with several: 400 on `warehouse_id` ("Choose a warehouse."). Given but not an active warehouse: 400 on `warehouse_id`. Permission rules unchanged (a Warehouse Admin still acts only in their own warehouse, 403 `wrong_branch`).
+- New action `design_system.view` (Super Admin only) in `ActionPermission`, therefore in `/auth/me/` `permissions` for SA only. No menu entry or home tile.
 
 ### 0.6.0 (minor, additive; branch type and activity-log search, ordering, export)
 - Branch objects gain `branch_type` (`branch` = Normal Branch, `warehouse` = Warehouse), same value as `kind`, which stays. `POST /branches/` accepts optional `branch_type` (default `branch`); `PATCH /branches/{id}/` accepts it too. `GET /branches/` gains `?branch_type=` (alias of `?kind=`). A second warehouse, or any type change of an existing row, is 400 on `branch_type`. No database change: `branch_type` is the existing `kind` column.

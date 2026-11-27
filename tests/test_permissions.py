@@ -50,6 +50,7 @@ EXPECTED: dict[str, set[str]] = {
     "sales.cancel": {SA, BA},  # 39
     "items.import": {SA, WA},  # 19, 20
     "shortfalls.resolve": {SA, WA, BA},  # 33-35
+    "design_system.view": {SA},  # 50
 }
 MENUS = {
     FS: ["Sell", "Find", "Stock", "Receive", "Sales"],
@@ -60,7 +61,7 @@ MENUS = {
 
 
 def test_expected_matrix_covers_every_action() -> None:
-    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 23
+    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 24
 
 
 def test_effective_actions_match_the_permission_table_for_every_role(users: dict[str, Any]) -> None:
@@ -242,6 +243,7 @@ def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[st
     }[role]
     assert ("activity.view" in body["permissions"]) == (role != FS)
     assert ("shortfalls.resolve" in body["permissions"]) == (role != FS)
+    assert ("design_system.view" in body["permissions"]) == (role == SA)  # DP.1: Super Admin only
     tiles = {m["key"] for m in body["home_links"]}  # FQ-16: a tile only for the holder of its action
     assert ("activity" in tiles) == ("activity.view" in body["permissions"])
     assert ("shortfalls" in tiles) == ("shortfalls.resolve" in body["permissions"])

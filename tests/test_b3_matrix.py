@@ -25,7 +25,13 @@ ENDPOINTS: list[tuple[str, str, Any, set[str], int]] = [
     ("PUT", "/api/v1/working-branch/", {"branch_id": "{a}"}, {SA, FS}, 200),  # row 10
     ("GET", "/api/v1/branches/", None, ALL, 200),  # row 12
     ("GET", "/api/v1/branches/{a}/", None, ALL, 200),  # row 12
-    ("POST", "/api/v1/branches/", {"code": "C", "name": "Branch C"}, {SA}, 201),  # row 11
+    (
+        "POST",
+        "/api/v1/branches/",
+        {"code": "C", "name": "Branch C", "branch_type": "branch"},
+        {SA},
+        201,
+    ),  # row 11
     ("PATCH", "/api/v1/branches/{a}/", {"name": "Renamed"}, {SA}, 200),  # row 11
     ("POST", "/api/v1/branches/{a}/deactivate/", None, {SA}, 200),  # row 11
     ("POST", "/api/v1/branches/{off}/activate/", None, {SA}, 200),  # row 11

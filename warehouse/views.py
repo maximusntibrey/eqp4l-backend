@@ -29,6 +29,7 @@ class ReceiptLineWriteSerializer(serializers.Serializer[object]):
 
 
 class GoodsReceiptCreateSerializer(serializers.Serializer[object]):
+    warehouse_id = serializers.IntegerField(min_value=1, required=False)  # only with several warehouses
     supplier_name = serializers.CharField(max_length=200)  # trimmed and non-blank by default
     notes = serializers.CharField(max_length=1000, required=False, allow_blank=True)
     lines = ReceiptLineWriteSerializer(many=True, allow_empty=False)

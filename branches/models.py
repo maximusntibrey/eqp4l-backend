@@ -28,10 +28,6 @@ class Location(models.Model):
     class Meta:
         constraints = [
             choice_check("kind", LocationKind, "locations_kind_valid"),
-            # Single location rule (ERD s4): only one warehouse row.
-            models.UniqueConstraint(
-                fields=["kind"], condition=models.Q(kind="warehouse"), name="locations_one_warehouse"
-            ),
         ]
 
     def __str__(self) -> str:

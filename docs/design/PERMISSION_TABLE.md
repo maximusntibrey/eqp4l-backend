@@ -154,6 +154,7 @@ Each entry is shown only to a role that holds the row it points to. Super Admin 
 | 45 | Activity entry (`activity.view`) | Y | warehouse | own branch | N | Same as row 41. SA, WA, BA: Home link "Activity" (FE s3; WA and BA see only their own location, OQ-25 decided 2026-11-24). |
 | 46 | Find entry (`find.use`) | Y | Y | Y | Y | Rows 13 and 22. SA: Home link (FE s3). Others: existing nav item. |
 | 47 | Receive entry (`dispatches.receive`) | Y | N | Y | Grant | Same as row 31. SA: Home link (FE s3). BA, FS: existing nav item. |
+| 50 | Design system showcase (`design_system.view`, frontend `/design-system`) | Y | N | N | N | Owner decision (contract 0.7.0). Super Admin only; no menu entry or tile. Server refuses nothing itself (the page is frontend only); the action in `/auth/me/` `permissions` is what the frontend checks. |
 
 ## 5. Self-approval rules
 

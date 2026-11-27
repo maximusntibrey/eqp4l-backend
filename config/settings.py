@@ -176,7 +176,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.6.0",
+    "VERSION": "0.7.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "BranchTypeEnum": "branches.models.LocationKind",
