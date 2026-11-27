@@ -26,11 +26,20 @@ from warehouse.models import GoodsReceipt, GoodsReceiptLine
 FOUR_DP = Decimal("0.0001")
 
 
-def active_warehouse() -> Location:
-    warehouse = Location.objects.filter(kind=LocationKind.WAREHOUSE, is_active=True).first()
-    if warehouse is None:
+def active_warehouse(warehouse_id: int | None = None) -> Location:
+    """The warehouse an operation runs in. Omitted id: the only active warehouse, else 400 `warehouse_id`."""
+    warehouses = Location.objects.filter(kind=LocationKind.WAREHOUSE, is_active=True)
+    if warehouse_id is not None:
+        warehouse = warehouses.filter(pk=warehouse_id).first()
+        if warehouse is None:
+            raise ApiError(400, "validation_error", "Choose an active warehouse.", "warehouse_id")
+        return warehouse
+    found = list(warehouses.order_by("pk")[:2])
+    if not found:
         raise ApiError(409, "conflict", "There is no active warehouse.")
-    return warehouse
+    if len(found) > 1:
+        raise ApiError(400, "validation_error", "Choose a warehouse.", "warehouse_id")
+    return found[0]
 
 
 def active_items(lines: list[dict[str, Any]], verb: str) -> dict[int, Item]:
@@ -77,7 +86,7 @@ def create_receipt(
     request: HttpRequest, actor: User, data: dict[str, Any], operation_id: uuid.UUID
 ) -> GoodsReceipt:
     require_action(actor, "goods_receipts.manage")
-    warehouse = active_warehouse()
+    warehouse = active_warehouse(data.get("warehouse_id"))
     require_location(actor, warehouse, request.session)
     lines: list[dict[str, Any]] = data["lines"]
     items = active_items(lines, "received")

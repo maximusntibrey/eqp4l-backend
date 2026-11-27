@@ -32,6 +32,10 @@ class BranchWriteSerializer(serializers.Serializer[object]):
     branch_type = serializers.ChoiceField(choices=LocationKind.choices, required=False)
 
 
+class BranchCreateSerializer(BranchWriteSerializer):
+    branch_type = serializers.ChoiceField(choices=LocationKind.choices)  # required on create (MW.1)
+
+
 class BranchQuerySerializer(serializers.Serializer[object]):
     kind = serializers.ChoiceField(choices=LocationKind.choices, required=False)
     branch_type = serializers.ChoiceField(choices=LocationKind.choices, required=False)  # alias of `kind`
@@ -76,11 +80,11 @@ class BranchListCreateView(generics.GenericAPIView[Location]):
         operation_id="branchesCreate",
         tags=["branches"],
         parameters=[IDEMPOTENCY],
-        request=BranchWriteSerializer,
+        request=BranchCreateSerializer,
         responses={201: BranchSerializer, **CREATE_ERRORS},
     )
     def post(self, request: Request) -> Response:
-        data = BranchWriteSerializer(data=request.data)
+        data = BranchCreateSerializer(data=request.data)
         data.is_valid(raise_exception=True)
 
         def work() -> tuple[int, dict[str, Any]]:

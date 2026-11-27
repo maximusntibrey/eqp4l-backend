@@ -52,7 +52,7 @@ def create_dispatch(
     request: HttpRequest, actor: User, data: dict[str, Any], operation_id: uuid.UUID
 ) -> Dispatch:
     require_action(actor, "dispatches.create")
-    origin = active_warehouse()
+    origin = active_warehouse(data.get("warehouse_id"))
     require_location(actor, origin, request.session)
     destination = Location.objects.filter(
         pk=data["destination_id"], kind=LocationKind.BRANCH, is_active=True

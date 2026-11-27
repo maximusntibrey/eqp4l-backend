@@ -40,6 +40,7 @@ class DispatchLineWriteSerializer(serializers.Serializer[object]):
 
 
 class DispatchCreateSerializer(serializers.Serializer[object]):
+    warehouse_id = serializers.IntegerField(min_value=1, required=False)  # only with several warehouses
     destination_id = serializers.IntegerField(min_value=1)
     lines = DispatchLineWriteSerializer(many=True, allow_empty=False)
 

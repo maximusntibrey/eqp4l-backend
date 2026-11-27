@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from django.db import connection
@@ -50,7 +51,9 @@ def test_kind_filter_paging_and_bad_query(users: dict[str, Any], locations: Any)
 
 
 def test_super_admin_creates_a_branch_and_it_is_audited(users: dict[str, Any], locations: Any) -> None:
-    response = call(client_as(users["sa"]), "POST", URL, {"code": "  C  ", "name": "Branch C"})
+    response = call(
+        client_as(users["sa"]), "POST", URL, {"code": "  C  ", "name": "Branch C", "branch_type": "branch"}
+    )
     body = response.json()
     assert response.status_code == 201 and set(body) == LOCATION_KEYS
     assert (body["kind"], body["code"], body["name"], body["is_active"]) == ("branch", "C", "Branch C", True)
@@ -65,13 +68,18 @@ def test_super_admin_creates_a_branch_and_it_is_audited(users: dict[str, Any], l
 @pytest.mark.parametrize(
     ("payload", "status", "code", "field"),
     [
-        ({"code": "a", "name": "Other"}, 409, "conflict", "code"),  # case-insensitive duplicate
-        ({"code": "N", "name": "branch a"}, 409, "conflict", "name"),
-        ({"name": "No code"}, 400, "validation_error", "code"),
-        ({"code": "N"}, 400, "validation_error", "name"),
-        ({"code": "   ", "name": "Blank"}, 400, "validation_error", "code"),
-        ({"code": "X" * 21, "name": "Long code"}, 400, "validation_error", "code"),
-        ({"code": "N", "name": "X" * 101}, 400, "validation_error", "name"),
+        (
+            {"code": "a", "name": "Other", "branch_type": "branch"},
+            409,
+            "conflict",
+            "code",
+        ),  # case-insensitive duplicate
+        ({"code": "N", "name": "branch a", "branch_type": "branch"}, 409, "conflict", "name"),
+        ({"name": "No code", "branch_type": "branch"}, 400, "validation_error", "code"),
+        ({"code": "N", "branch_type": "branch"}, 400, "validation_error", "name"),
+        ({"code": "   ", "name": "Blank", "branch_type": "branch"}, 400, "validation_error", "code"),
+        ({"code": "X" * 21, "name": "Long code", "branch_type": "branch"}, 400, "validation_error", "code"),
+        ({"code": "N", "name": "X" * 101, "branch_type": "branch"}, 400, "validation_error", "name"),
     ],
 )
 def test_create_rejects_bad_input_with_the_standard_error(
@@ -121,37 +129,62 @@ def test_branch_type_filter_and_bad_value(users: dict[str, Any], locations: Any)
         assert call(client_as(users[key]), "GET", URL, {"branch_type": "warehouse"}).json()["count"] == 1
 
 
-def test_second_warehouse_is_a_400_on_branch_type_not_a_500(users: dict[str, Any], locations: Any) -> None:
+def test_branch_type_is_required_on_create(users: dict[str, Any], locations: Any) -> None:
+    sa = client_as(users["sa"])
+    for payload in ({"code": "N", "name": "No type"}, {"code": "N", "name": "Moon", "branch_type": "moon"}):
+        response = call(sa, "POST", URL, payload)
+        assert response.status_code == 400 and response.json()["errors"][0]["field"] == "branch_type"
+    assert Location.objects.count() == 3 and not AuditEvent.objects.filter(action="branch_created")
+
+
+def test_several_warehouses_are_allowed(users: dict[str, Any], locations: Any) -> None:
     sa = client_as(users["sa"])
     response = call(sa, "POST", URL, {"code": "W2", "name": "Second", "branch_type": "warehouse"})
-    body = response.json()
-    assert response.status_code == 400 and body["code"] == "validation_error"
-    assert (
-        body["errors"][0]["field"] == "branch_type"
-        and "warehouse already exists" in body["errors"][0]["message"]
-    )
-    assert Location.objects.filter(kind="warehouse").count() == 1
-    assert call(sa, "POST", URL, {"code": "W2", "name": "Second", "branch_type": "moon"}).status_code == 400
-    assert not AuditEvent.objects.filter(action="branch_created")
-
-
-def test_a_warehouse_can_be_created_only_when_none_exists(users: dict[str, Any], locations: Any) -> None:
-    Location.objects.filter(kind="warehouse").update(kind="branch")  # defensive: no warehouse row exists
-    response = call(
-        client_as(users["sa"]), "POST", URL, {"code": "W2", "name": "Second", "branch_type": "warehouse"}
-    )
     assert response.status_code == 201 and response.json()["branch_type"] == "warehouse"
+    assert Location.objects.filter(kind="warehouse").count() == 2
 
 
-def test_changing_the_type_of_an_existing_row_is_refused(users: dict[str, Any], locations: Any) -> None:
+def test_branch_may_become_a_warehouse_and_empty_warehouse_may_become_a_branch(
+    users: dict[str, Any], locations: Any
+) -> None:
     sa = client_as(users["sa"])
-    to_wh = call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "warehouse"})
-    assert to_wh.status_code == 400 and to_wh.json()["errors"][0]["field"] == "branch_type"
-    to_branch = call(sa, "PATCH", f"{URL}{locations['wh'].pk}/", {"branch_type": "branch"})
-    assert to_branch.status_code == 400 and to_branch.json()["errors"][0]["field"] == "branch_type"
-    same = call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "branch", "name": "Renamed"})
-    assert same.status_code == 200 and same.json()["branch_type"] == "branch"
-    assert Location.objects.get(pk=locations["wh"].pk).kind == "warehouse"
+    up = call(sa, "PATCH", f"{URL}{locations['a'].pk}/", {"branch_type": "warehouse"})
+    assert up.status_code == 200 and up.json()["branch_type"] == "warehouse"
+    fresh = Location.objects.create(kind="warehouse", code="W3", name="Empty")
+    down = call(sa, "PATCH", f"{URL}{fresh.pk}/", {"branch_type": "branch"})
+    assert down.status_code == 200 and down.json()["branch_type"] == "branch"
+
+
+def test_type_change_warehouse_to_branch_refused_with_stock_receipts_or_dispatches(
+    users: dict[str, Any], locations: Any
+) -> None:
+    from inventory.models import Brand, Category, Item, StockBalance
+    from transfers.models import Dispatch
+    from warehouse.models import GoodsReceipt
+
+    sa = client_as(users["sa"])
+    w_stock = Location.objects.create(kind="warehouse", code="W4", name="With stock")
+    w_grn = Location.objects.create(kind="warehouse", code="W5", name="With GRN")
+    w_disp = Location.objects.create(kind="warehouse", code="W6", name="With dispatch")
+    item = Item.objects.create(
+        sku="S1", name="I", category=Category.objects.get(name="Laptop"), brand=Brand.objects.create(name="B")
+    )
+    StockBalance.objects.create(location=w_stock, item=item, on_hand=1)
+    GoodsReceipt.objects.create(
+        reference="GRN-T", location=w_grn, supplier_name="S", received_by=users["wa"], operation_id=uuid4()
+    )
+    Dispatch.objects.create(
+        reference="TRF-T",
+        origin_location=w_disp,
+        destination_location=locations["a"],
+        dispatched_by=users["wa"],
+        operation_id=uuid4(),
+    )
+    for w in (w_stock, w_grn, w_disp):
+        response = call(sa, "PATCH", f"{URL}{w.pk}/", {"branch_type": "branch"})
+        assert response.status_code == 400 and response.json()["errors"][0]["field"] == "branch_type"
+        assert Location.objects.get(pk=w.pk).kind == "warehouse"
+    assert not AuditEvent.objects.filter(action="branch_updated")
 
 
 def test_branch_type_writes_are_super_admin_only(users: dict[str, Any], locations: Any) -> None:
@@ -190,8 +223,10 @@ def test_deactivate_keeps_history_and_activate_restores(users: dict[str, Any], l
 
 def test_state_conflicts_on_deactivate_and_activate(users: dict[str, Any], locations: Any) -> None:
     sa = client_as(users["sa"])
-    warehouse = call(sa, "POST", f"{URL}{locations['wh'].pk}/deactivate/")
+    warehouse = call(sa, "POST", f"{URL}{locations['wh'].pk}/deactivate/")  # the last active warehouse
     assert warehouse.status_code == 409 and warehouse.json()["code"] == "invalid_status_transition"
+    spare = Location.objects.create(kind="warehouse", code="W2", name="Spare")
+    assert call(sa, "POST", f"{URL}{spare.pk}/deactivate/").status_code == 200  # another stays active
     assert call(sa, "POST", f"{URL}{locations['a'].pk}/activate/").status_code == 409  # already active
     call(sa, "POST", f"{URL}{locations['a'].pk}/deactivate/")
     assert call(sa, "POST", f"{URL}{locations['a'].pk}/deactivate/").status_code == 409  # already off
@@ -213,19 +248,31 @@ def test_deactivated_branch_blocks_acting_in_it_but_not_reading_history(
 def test_same_key_creates_one_branch_and_replays_the_response(users: dict[str, Any], locations: Any) -> None:
     sa = client_as(users["sa"])
     key = "9b2d0f0e-6a1c-4c1e-8f43-1a1b2c3d4e5f"
-    first = call(sa, "POST", URL, {"code": "C", "name": "Branch C"}, key=key)
-    again = call(sa, "POST", URL, {"code": "C", "name": "Branch C"}, key=key)
+    first = call(sa, "POST", URL, {"code": "C", "name": "Branch C", "branch_type": "branch"}, key=key)
+    again = call(sa, "POST", URL, {"code": "C", "name": "Branch C", "branch_type": "branch"}, key=key)
     assert (first.status_code, again.status_code) == (201, 201) and first.json() == again.json()
     assert Location.objects.filter(code="C").count() == 1
     assert AuditEvent.objects.filter(action="branch_created").count() == 1
-    clash = call(sa, "POST", URL, {"code": "D", "name": "Branch D"}, key=key)
+    clash = call(sa, "POST", URL, {"code": "D", "name": "Branch D", "branch_type": "branch"}, key=key)
     assert clash.status_code == 409 and clash.json()["code"] == "idempotency_conflict"
 
 
 def test_another_user_cannot_replay_a_stored_response(users: dict[str, Any], locations: Any) -> None:
     key = "6f1d1d9a-5f0b-4b7e-9d52-0a0b0c0d0e0f"
-    call(client_as(users["sa"]), "POST", URL, {"code": "C", "name": "Branch C"}, key=key)
-    other = call(client_as(users["ba"]), "POST", URL, {"code": "C", "name": "Branch C"}, key=key)
+    call(
+        client_as(users["sa"]),
+        "POST",
+        URL,
+        {"code": "C", "name": "Branch C", "branch_type": "branch"},
+        key=key,
+    )
+    other = call(
+        client_as(users["ba"]),
+        "POST",
+        URL,
+        {"code": "C", "name": "Branch C", "branch_type": "branch"},
+        key=key,
+    )
     assert other.status_code == 403  # refused by role, never served from the other user's record
 
 
@@ -239,7 +286,11 @@ def test_two_simultaneous_creates_of_the_same_code_exactly_one_wins(
     def create(client: APIClient) -> int:
         try:
             barrier.wait()
-            return int(call(client, "POST", URL, {"code": "RACE", "name": "Race branch"}).status_code)
+            return int(
+                call(
+                    client, "POST", URL, {"code": "RACE", "name": "Race branch", "branch_type": "branch"}
+                ).status_code
+            )
         finally:
             connection.close()
 
