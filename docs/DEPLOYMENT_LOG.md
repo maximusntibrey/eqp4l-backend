@@ -8,6 +8,7 @@ Railway deploys `main` to production and `develop` to staging, for both services
 | Migrate and static fix (`06c7fcb`) | Railway production | Waived by owner (empty database) | Yes, all apps applied on start (`AUTO_MIGRATE=True`) | Health ok, bad-credential login 401, admin page 200, browser login reaches the API (401 for a wrong password) after the cookie fix | Yes: staging rehearsal below | Yes |
 | Same commit | Railway staging | Not needed (no data) | Yes | Login, password change, dashboard, items, stock, branches, activity log and sales all 2xx | Rehearsed: previous commit deployed healthy, latest redeployed healthy, each switch under a minute | n/a |
 | `v1.0.0` | Railway production | Waived by owner (empty database) | Yes | Authenticated screens verified on staging; production sign-in left to the first owner login | Yes | Yes |
+| `v1.0.1` (frontend `188232f`) | Railway production | Waived by owner (hosted backup/restore gate unmet, hosting O1.1 on hold) | n/a: frontend only, backend `main` already current | Prod frontend 200 (`p4l-inventory-production.up.railway.app`), backend `/health/` ok, `/auth/me/` 401 | Redeploy previous deployment | Yes |
 
 Notes:
 - Cookie fix: `CSRF_COOKIE_SAMESITE=None` and `SESSION_COOKIE_SAMESITE=None` on both environments. Without them the browser login returned 403 because frontend and backend are on different sites.
