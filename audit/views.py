@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import generics, serializers
+from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -141,7 +142,18 @@ def _safe_cell(value: object) -> str:
     return f"'{text}" if text[:1] in FORMULA_STARTS else text
 
 
+class AcceptAnything(BaseContentNegotiation):
+    """The export streams CSV from a plain HttpResponse; browsers and clients may ask for text/csv."""
+
+    def select_parser(self, request: Request, parsers: Any) -> Any:
+        return parsers[0] if parsers else None
+
+    def select_renderer(self, request: Request, renderers: Any, format_suffix: Any = None) -> Any:
+        return renderers[0], renderers[0].media_type
+
+
 class ActivityLogExportView(APIView):
+    content_negotiation_class = AcceptAnything
     permission_classes = action_permissions("activity.view")
 
     @extend_schema(
