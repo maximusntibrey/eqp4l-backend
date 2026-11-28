@@ -191,7 +191,15 @@ def _plan_row(
 
 def _next_reference() -> str:
     seq, _ = LoginIdSequence.objects.select_for_update().get_or_create(prefix="IMP")
-    seq.last_number += 1
+    # Batches created outside this function (seed data, restores) must never cause a duplicate reference.
+    highest = (
+        ImportBatch.objects.filter(reference__startswith="IMP-")
+        .order_by("-reference")
+        .values_list("reference", flat=True)
+        .first()
+    )
+    existing = int(highest.split("-")[1]) if highest and highest.split("-")[1].isdigit() else 0
+    seq.last_number = max(seq.last_number, existing) + 1
     seq.save(update_fields=["last_number"])
     return f"IMP-{seq.last_number:06d}"
 
