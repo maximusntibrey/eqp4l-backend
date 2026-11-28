@@ -51,6 +51,17 @@ Restore is only to a throwaway database. Use `scripts/restore-test.sh` from Bash
 5. Run `/health/`, login, dashboard, item list and Find smoke checks.
 6. Record the result in `docs/DEPLOYMENT_LOG.md`.
 
+## API smoke test
+
+`scripts/api-smoke.py` (Python 3 standard library only) logs in over HTTP like the browser does (CSRF cookie, `Origin` header, `Idempotency-Key`), checks the CORS preflight, calls every GET endpoint, then runs safe write cycles: a draft item (create, edit), a user (create, edit, deactivate), a branch (create, edit, deactivate), a goods receipt, a dispatch received at a branch, a sale cancelled again and a CSV import dry run. Each call is printed with its status and a verdict. It exits 1 on any 5xx, missing CORS header, CSRF refusal or a write the role should be able to do. A 403 on an endpoint the role may not use prints `403 (role)` and is fine.
+
+```
+python scripts/api-smoke.py --login SA-0001 --password "<password>"
+python scripts/api-smoke.py --base https://staging.example --origin https://frontend.example --login USR-0001 --password "<password>"
+```
+
+Options: `--base` (default `http://localhost:8000`), `--origin` (default `http://localhost:5173`), `--login`, `--password` (or `API_SMOKE_PASSWORD`). The writes are real rows: run it against a local or staging stack, never production. `tests/test_api_matrix.py` is the pytest twin: every operation in `openapi.yaml` for every role, the Idempotency-Key rules, the CORS preflight of every write path and every GET response checked against its published schema.
+
 ## Monitoring
 
 Set `SENTRY_DSN` and `SENTRY_ENVIRONMENT` for a monitored environment. `/health/` must remain accessible and must check both application and database.

@@ -86,12 +86,13 @@ def make_user(db: None, locations: dict[str, Any]) -> Callable[..., Any]:
 
 @pytest.fixture
 def users(make_user: Callable[..., Any]) -> dict[str, Any]:
-    """One active user per role."""
+    """One active user per role (central_warehouse is `cw`)."""
     return {
         "sa": make_user("super_admin"),
         "wa": make_user("warehouse_admin", "wh"),
         "ba": make_user("branch_admin", "a"),
         "fs": make_user("front_staff"),
+        "cw": make_user("central_warehouse"),
     }
 
 

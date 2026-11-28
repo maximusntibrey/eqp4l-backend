@@ -409,6 +409,23 @@ def test_a_stock_failure_after_the_rows_passed_leaves_nothing_behind(
     assert nothing_written()
 
 
+def test_commit_never_reuses_a_batch_reference_created_outside_the_sequence(
+    wa: APIClient, users: dict[str, Any], locations: Any
+) -> None:
+    """Seed data and restores create batches outside the IMP sequence: the next import must not collide."""
+    ImportBatch.objects.create(
+        reference="IMP-000003",
+        location=locations["wh"],
+        file_name="seed",
+        row_count=1,
+        imported_by=users["wa"],
+        operation_id=uuid.uuid4(),
+    )
+    response = send(wa, GOOD, dry_run=False)
+    assert response.status_code == 200, response.content
+    assert response.json()["batch_reference"] == "IMP-000004"
+
+
 def test_replaying_a_commit_with_the_same_key_imports_once(wa: APIClient) -> None:
     key = uuid.uuid4()
     first, again = send(wa, GOOD, dry_run=False, key=key), send(wa, GOOD, dry_run=False, key=key)

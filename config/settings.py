@@ -4,6 +4,7 @@ from pathlib import Path
 
 import dj_database_url
 import environ
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -155,6 +156,8 @@ if not DEBUG or env.bool("SECURE_PROXY_SSL_HEADER_ENABLED", default=False):  # b
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_EXPOSE_HEADERS = ["Retry-After"]
+# Every POST, PUT and PATCH sends Idempotency-Key; without it the browser preflight fails cross-site.
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
@@ -176,7 +179,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Payless4Laptops Inventory API",
     "DESCRIPTION": "Inventory & warehouse system. The OpenAPI contract is the frontend's only link.",
-    "VERSION": "0.7.0",
+    "VERSION": "0.8.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "BranchTypeEnum": "branches.models.LocationKind",
@@ -208,6 +211,7 @@ DEV_SEED_PASSWORDS = {
     "WA": env.str("DEV_WAREHOUSE_ADMIN_PASSWORD", default=""),
     "BA": env.str("DEV_BRANCH_ADMIN_PASSWORD", default=""),
     "FS": env.str("DEV_FRONT_STAFF_PASSWORD", default=""),
+    "CW": env.str("DEV_CENTRAL_WAREHOUSE_PASSWORD", default=""),  # optional
 }
 
 # Error monitoring is on only when a DSN is configured.

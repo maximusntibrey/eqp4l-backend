@@ -24,48 +24,51 @@ from tests.conftest import login
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("tests.urls")]
 SA, WA, BA, FS = "super_admin", "warehouse_admin", "branch_admin", "front_staff"
+CW = "central_warehouse"  # read-only view across every warehouse (contract 0.8.0)
 
 # Written from the approved table (row numbers in brackets), NOT derived from the code under test.
 EXPECTED: dict[str, set[str]] = {
     "users.manage": {SA},  # 4-8
     "users.view": {SA, WA, BA},  # 9 (WA warehouse, BA own branch: OQ-5)
     "branches.manage": {SA},  # 11
-    "branches.view": {SA, WA, BA, FS},  # 12
+    "branches.view": {SA, WA, BA, FS, CW},  # 12
     "working_branch.select": {SA, FS},  # 10
-    "items.view": {SA, WA, BA, FS},  # 13
+    "items.view": {SA, WA, BA, FS, CW},  # 13
     "items.manage": {SA, WA},  # 15, 17, 18, 43
     "items.view_cost": {SA, WA},  # 14
     "prices.manage": {SA},  # 16 (others only with the Manage prices grant)
-    "stock.view": {SA, WA, BA, FS},  # 21
-    "stock.lookup_other_branches": {SA, WA, BA, FS},  # 22
+    "stock.view": {SA, WA, BA, FS, CW},  # 21
+    "stock.lookup_other_branches": {SA, WA, BA, FS, CW},  # 22
     "goods_receipts.manage": {SA, WA},  # 25, 27
     "dispatches.create": {SA, WA},  # 28
-    "dispatches.view": {SA, WA, BA, FS},  # 29
+    "dispatches.view": {SA, WA, BA, FS, CW},  # 29
     "dispatches.waiting": {SA, BA, FS},  # 30
     "dispatches.receive": {SA, BA},  # 31 (FS only with the Receive stock grant)
     "sales.record": {SA, BA, FS},  # 36, 44
     "activity.view": {SA, WA, BA},  # 41, 45
-    "find.use": {SA, WA, BA, FS},  # 13, 22, 46
+    "find.use": {SA, WA, BA, FS, CW},  # 13, 22, 46
     "dashboard.view": {SA, WA, BA},  # 40 (FS has no Home tab)
     "sales.cancel": {SA, BA},  # 39
     "items.import": {SA, WA},  # 19, 20
     "shortfalls.resolve": {SA, WA, BA},  # 33-35
     "design_system.view": {SA},  # 50
+    "goods_receipts.view": {SA, WA, CW},  # 27 (0.8.0)
 }
 MENUS = {
     FS: ["Sell", "Find", "Stock", "Receive", "Sales"],
     BA: ["Home", "Sell", "Find", "Stock", "Receive"],
     WA: ["Home", "Items", "Receive stock", "Dispatch", "Find"],
+    CW: ["Stock", "Receipts", "Dispatch", "Find"],
     SA: ["Home", "Items", "Warehouse", "Branches", "Users"],
 }
 
 
 def test_expected_matrix_covers_every_action() -> None:
-    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 24
+    assert set(EXPECTED) == set(ACTIONS) and len(ACTIONS) == 25
 
 
 def test_effective_actions_match_the_permission_table_for_every_role(users: dict[str, Any]) -> None:
-    for key, role in {"sa": SA, "wa": WA, "ba": BA, "fs": FS}.items():
+    for key, role in {"sa": SA, "wa": WA, "ba": BA, "fs": FS, "cw": CW}.items():
         allowed = {a for a in ACTIONS if role in EXPECTED[a]}
         assert set(effective_actions(users[key])) == allowed, role
         for action in ACTIONS:
@@ -78,7 +81,7 @@ def test_http_probe_per_action_for_every_role(action: str, users: dict[str, Any]
     """The permission class a view declares: allowed role 200, every other role 403, anonymous 401."""
     url = f"/probe/action/{action}/"
     assert APIClient().get(url).status_code == 401
-    for key, role in {"sa": SA, "wa": WA, "ba": BA, "fs": FS}.items():
+    for key, role in {"sa": SA, "wa": WA, "ba": BA, "fs": FS, "cw": CW}.items():
         client = APIClient()
         login(client, users[key])
         response = client.get(url)
@@ -173,6 +176,7 @@ def test_branch_rules_for_every_role(users: dict[str, Any], locations: dict[str,
     assert [can_act_in(users["wa"], loc, {}) for loc in (wh, a, b)] == [True, False, False]
     assert [can_act_in(users["ba"], loc, {}) for loc in (wh, a, b)] == [False, True, False]
     assert [can_act_in(users["fs"], loc, {}) for loc in (wh, a, b)] == [False, False, False]
+    assert [can_act_in(users["cw"], loc, {}) for loc in (wh, a, b)] == [False, False, False]  # read-only role
     chosen = {"working_branch_id": b.pk}
     assert [can_act_in(users["fs"], loc, chosen) for loc in (wh, a, b)] == [False, False, True]
     # BA and WA cannot be redirected by a session value
@@ -225,9 +229,9 @@ def test_adding_a_second_role_one_at_a_time_is_refused_for_non_super_admin(
 # ---- /me and the allowed menu -----------------------------------------------------------------
 
 
-@pytest.mark.parametrize("key", ["sa", "wa", "ba", "fs"])
+@pytest.mark.parametrize("key", ["sa", "wa", "ba", "fs", "cw"])
 def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[str, Any]) -> None:
-    role = {"sa": SA, "wa": WA, "ba": BA, "fs": FS}[key]
+    role = {"sa": SA, "wa": WA, "ba": BA, "fs": FS, "cw": CW}[key]
     client = APIClient()
     login(client, users[key])
     body = client.get("/api/v1/auth/me/").json()
@@ -240,9 +244,10 @@ def test_me_returns_roles_permissions_and_menu_per_role(key: str, users: dict[st
         WA: ["Activity", "Shortfalls"],
         BA: ["Activity", "Shortfalls", "Sales"],
         FS: [],
+        CW: [],
     }[role]
-    assert ("activity.view" in body["permissions"]) == (role != FS)
-    assert ("shortfalls.resolve" in body["permissions"]) == (role != FS)
+    assert ("activity.view" in body["permissions"]) == (role not in (FS, CW))
+    assert ("shortfalls.resolve" in body["permissions"]) == (role not in (FS, CW))
     assert ("design_system.view" in body["permissions"]) == (role == SA)  # DP.1: Super Admin only
     tiles = {m["key"] for m in body["home_links"]}  # FQ-16: a tile only for the holder of its action
     assert ("activity" in tiles) == ("activity.view" in body["permissions"])

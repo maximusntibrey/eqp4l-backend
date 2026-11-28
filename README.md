@@ -13,6 +13,10 @@ Python 3.12, Django 5.2 LTS, PostgreSQL 16. Everything runs in Docker; the host 
    This creates `.env` from `.env.example` (local-only values), builds the image, starts PostgreSQL 16 and the API, runs `migrate` and the seed hook automatically.
 3. Open <http://localhost:8000/health/>. Expected: `{"status":"ok","database":"ok"}`.
 
+4. The browser frontend (<http://localhost:5173> or <http://127.0.0.1:5173>) is already allowed: `.env.example` sets `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` for both, and the CORS preflight allows `Idempotency-Key`. If you changed `.env` after the first start, run `docker compose up -d` again so the container re-reads it.
+5. Dev logins (passwords are the `DEV_*` values in `.env`): `SA-0001` Super Admin, `USR-0001` Warehouse Admin, `USR-0002` Branch Admin, `USR-0003` Front Staff, `USR-0004` Central Warehouse (read-only; needs `DEV_CENTRAL_WAREHOUSE_PASSWORD`, added to `.env.example`; copy that line into an older `.env`).
+6. Prove the whole API from the command line (Python 3 only, no packages): `python scripts/api-smoke.py --login SA-0001 --password <DEV_SA_0001_PASSWORD>`. See `docs/RUNBOOK.md` "API smoke test".
+
 Other tasks: `.\scripts\dev.ps1 check` (the full check command), `test`, `shell`, `logs`, `down`, `reset-db` (asks before deleting local data).
 Without PowerShell: `docker compose up -d --build`, `docker compose run --rm web bash scripts/check.sh`, `docker compose down`.
 

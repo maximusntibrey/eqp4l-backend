@@ -140,6 +140,13 @@ def test_export_returns_csv_with_the_same_filters_and_scope(users: dict[str, Any
     assert "TRF-9" in wa_body and "SKU-1" not in wa_body
 
 
+def test_export_accepts_a_text_csv_accept_header(users: dict[str, Any], events: Any) -> None:
+    """Browsers and fetch send Accept: text/csv; the endpoint must answer 200, not 406."""
+    response = client_as(users["sa"]).get(EXPORT, HTTP_ACCEPT="text/csv")
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/csv")
+
+
 def test_export_permissions_match_the_list(users: dict[str, Any], events: Any, locations: Any) -> None:
     assert call(client_as(users["fs"]), "GET", EXPORT).status_code == 403
     assert call(APIClient(), "GET", EXPORT).status_code in (401, 403)

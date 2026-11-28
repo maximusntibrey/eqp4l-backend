@@ -42,6 +42,7 @@ ACTIONS = [
     "items.import",  # rows 19, 20 (v0.4.2): SA, WA
     "shortfalls.resolve",  # rows 33-35 (v0.5.0): view and resolve dispatch shortfalls, SA, WA, BA
     "design_system.view",  # row 50 (v0.7.0): frontend /design-system showcase, SA only
+    "goods_receipts.view",  # row 27 (v0.8.0): list and read receipts; SA, WA (own warehouse), central (all)
 ]
 
 _EVERYONE = {
@@ -61,6 +62,7 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "items.manage",
             "items.view_cost",
             "goods_receipts.manage",
+            "goods_receipts.view",
             "dispatches.create",
             "activity.view",  # row 41: warehouse activity (OQ-5)
             "items.import",
@@ -68,6 +70,8 @@ ROLE_ACTIONS: dict[str, frozenset[str]] = {
             "shortfalls.resolve",
         }
     ),
+    # Read-only across every warehouse (contract 0.8.0): no cost, no stock or receipt writes.
+    c.CENTRAL_WAREHOUSE: frozenset(_EVERYONE | {"goods_receipts.view"}),
     c.BRANCH_ADMIN: frozenset(
         _EVERYONE
         | {

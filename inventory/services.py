@@ -168,9 +168,11 @@ def _clean(data: dict[str, Any], item: Item | None) -> dict[str, Any]:
         changes["category"] = category
     if category is None:
         raise ApiError(400, "validation_error", "Choose a category.", "category_id")
+    # An imported or seeded item may have no sub-type: editing it must not force one (PATCH was 400).
+    keep_empty = item is not None and "subtype_id" not in changes and item.subtype_id is None
     subtype_id = changes.pop("subtype_id", item.subtype_id if item else None)
-    subtype = Subtype.objects.filter(pk=subtype_id, category=category).first()
-    if subtype is None:
+    subtype = None if keep_empty else Subtype.objects.filter(pk=subtype_id, category=category).first()
+    if subtype is None and not keep_empty:
         raise ApiError(
             400, "validation_error", "Choose a sub-type that belongs to the category.", "subtype_id"
         )
